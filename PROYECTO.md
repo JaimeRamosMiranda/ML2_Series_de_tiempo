@@ -3,7 +3,16 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-04**
+Última actualización: **2026-08-04** (sesión 1: Fases 0–2 + README a/c)
+
+### Registro de PRs (todas cerradas exitosamente)
+| PR | Contenido |
+|---|---|
+| #1 | Fase 0: setup del repositorio + demo de MLflow |
+| #2 | Fase 1: dataset y notebook de EDA |
+| #3 | Fase 2: feature engineering |
+| #4 | Separar material original de clase del repo |
+| #5 | README secciones a (problema de ML) y c (dataset/diccionario) |
 
 ---
 
@@ -114,11 +123,12 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - **GitHub CLI**: `gh` 2.97.0 instalado y autenticado como JaimeRamosMiranda (los PRs los maneja la IA).
 - **MLflow local**: se usa backend **SQLite** (`sqlite:///mlruns/mlflow.db`), porque
   MLflow 3.x puso el filesystem store en modo mantenimiento.
-- **Git**: 2.54.0 disponible. `gh` (GitHub CLI) **no instalado** → crear el repo remoto desde la web.
+- **Git**: 2.54.0 disponible. **`gh` 2.97.0 SÍ está instalado y autenticado** (crear el repo remoto desde la web ya se hizo).
 - **Material original de clase** (notebooks previos + PDF + AirPassengers.csv): se movieron fuera
   del repo a `D:\Jaime Ramos 2\00 Entorno Visual code\MLE2_Clase_Originales\` para que el repo
   tenga únicamente los notebooks del proyecto. Pueden usarse como referencia de código.
 - **Clave API**: Groq → `GROQ_API_KEY` en `.env` (gitignoreado). Nunca subir claves al repo.
+- **Jupyter/nbconvert**: para ejecutar notebooks desde CLI usar `python -m nbconvert --to notebook --execute --inplace <archivo>` (el subcomando `jupyter-nbconvert` no está registrado).
 
 ---
 
@@ -142,6 +152,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - [x] Instalar `gh` y autenticar (PR #1 `development→main` fusionada exitosamente).
 - [x] Autenticar Kaggle CLI (`kaggle auth login`, usuario jframosm) y aceptar las reglas de la competición `demand-forecasting-kernels-only`.
 - [x] Descargar el dataset a `data/raw/` (train.csv, test.csv, sample_submission.csv). Kaggle 2.2.4 usa `kaggle competitions download -f <archivo>`; el ejecutable está en `$env:APPDATA\Python\Python314\Scripts\kaggle.exe` (no está en PATH).
+- [x] README: secciones a (problema de ML) y c (dataset + diccionario) redactadas en detalle (PR #5). Pendientes: b, d, e, f.
+- [x] Mover material original de clase fuera del repo (a `MLE2_Clase_Originales/`).
 - [ ] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env`.
 - [ ] Definir si se hacen los retos opcionales (Docker/Azure).
 
@@ -171,3 +183,28 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 2. Fase 4: experimentos MLflow (local + DagsHub) y modelo productivo.
 3. Fase 5: agente genAI con Groq.
 4. Fase 6-8: scripts, documentación y release v1.0.0.
+
+---
+
+## 10. Cómo continuar desde otra computadora
+
+1. **Clonar** el repo:
+   `git clone https://github.com/JaimeRamosMiranda/ML2_Series_de_tiempo.git`
+   y entrar a `ML2_Series_de_tiempo/`.
+2. **Crear/activar entorno** con Python 3.11–3.14 y luego:
+   `pip install -r requirements.txt`
+   (si algo falla por Python 3.14, usar Python 3.11/3.12).
+3. **Configurar credenciales** (una vez por máquina):
+   - GitHub: `gh auth login` (los PRs los maneja la IA vía `gh`).
+   - Kaggle (solo si hay que re-descargar el dataset): `kaggle auth login`
+     — el dataset ya está commiteado en `data/raw/`.
+   - Groq: copiar `.env.example` a `.env` y pegar `GROQ_API_KEY`
+     (tier gratuito: https://console.groq.com).
+4. **Recordar**:
+   - Trabajar en la rama `development` (nunca commitear directo a `main`).
+   - MLflow local usa SQLite: `sqlite:///mlruns/mlflow.db` (ver `scripts/demo_mlflow.py`).
+   - Leer este archivo para retomar el contexto y el `README.md` para el entregable.
+5. **Verificar estado**: `git status`, `git log --oneline -5`, `git pull --ff-only origin development`.
+
+> El contexto completo de lo conversado está en este archivo; el entregable formal
+> (README por secciones) está en `README.md`.
