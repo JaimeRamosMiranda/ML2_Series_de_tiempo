@@ -83,7 +83,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | Fase | Tareas | Estado |
 |---|---|---|
 | 0. Setup | Repo GitHub, estructura, .gitignore, requirements.txt, primer commit, ramas main/development | **COMPLETADA** (PR #1 fusionada en main; gh instalado) |
-| 1. Datos y EDA | Descargar dataset a `data/raw/`, notebook `01_preprocesamiento_eda.ipynb`, diccionario en README | Pendiente |
+| 1. Datos y EDA | Descargar dataset a `data/raw/`, notebook `01_preprocesamiento_eda.ipynb`, diccionario en README | **COMPLETADA** (dataset descargado vía Kaggle CLI; notebook ejecutado con 15/15 celdas OK) |
 | 2. Features | `src/features/build_features.py`: lags (1,7,30), rolling (7,30), calendario (año, mes, día, día de semana, semana), store/item categóricas; notebook `02` | Pendiente |
 | 3. Modelos | Backtesting walk-forward, comparar familias de la tabla de decisión; métricas offline y online | Pendiente |
 | 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | Pendiente |
@@ -137,8 +137,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - [x] Crear repo en GitHub (web) y vincular el remoto local. Repo: https://github.com/JaimeRamosMiranda/ML2_Series_de_tiempo
 - [x] Instalar MLflow y DagsHub y validar en Python 3.14 (funciona con SQLite + websockets 13).
 - [x] Instalar `gh` y autenticar (PR #1 `development→main` fusionada exitosamente).
-- [ ] Autenticar Kaggle CLI (`kaggle auth login`) y aceptar las reglas de la competición `demand-forecasting-kernels-only` para descargar el dataset.
-- [ ] Descargar el dataset a `data/raw/train.csv`.
+- [x] Autenticar Kaggle CLI (`kaggle auth login`, usuario jframosm) y aceptar las reglas de la competición `demand-forecasting-kernels-only`.
+- [x] Descargar el dataset a `data/raw/` (train.csv, test.csv, sample_submission.csv). Kaggle 2.2.4 usa `kaggle competitions download -f <archivo>`; el ejecutable está en `$env:APPDATA\Python\Python314\Scripts\kaggle.exe` (no está en PATH).
 - [ ] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env`.
 - [ ] Definir si se hacen los retos opcionales (Docker/Azure).
 
@@ -164,10 +164,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 9. Pasos siguientes (próxima sesión)
 
-1. Continuar Fase 0 (si no terminó): vincular remoto de GitHub y subir ramas.
-2. Fase 1: descargar dataset, crear notebook de EDA/preprocesamiento.
-3. Fase 2: módulo de features.
-4. Fase 3: modelos y backtesting.
-5. Fase 4: experimentos MLflow (local + DagsHub) y modelo productivo.
-6. Fase 5: agente genAI con Groq.
-7. Fase 6-8: scripts, documentación y release v1.0.0.
+1. Fase 2: `src/features/build_features.py` (lags, rolling, calendario) + notebook `02_feature_engineering.ipynb`.
+2. Fase 3: modelos y backtesting (baselines, SARIMA, Prophet, LightGBM/XGBoost/CatBoost, etc.).
+3. Fase 4: experimentos MLflow (local + DagsHub) y modelo productivo.
+4. Fase 5: agente genAI con Groq.
+5. Fase 6-8: scripts, documentación y release v1.0.0.
