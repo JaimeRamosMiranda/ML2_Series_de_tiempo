@@ -10,7 +10,8 @@ insights basado en Groq.
 
 ## Estado del proyecto
 
-- Fase 0 (setup del repositorio): en curso.
+- Fase 0 (setup del repositorio + MLflow demo): completada.
+- Fase 1 (datos y EDA): completada — `notebooks/01_preprocesamiento_eda.ipynb`, datos en `data/`.
 
 ## Estructura
 
