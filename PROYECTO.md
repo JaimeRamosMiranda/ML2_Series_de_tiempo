@@ -115,6 +115,9 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - **MLflow local**: se usa backend **SQLite** (`sqlite:///mlruns/mlflow.db`), porque
   MLflow 3.x puso el filesystem store en modo mantenimiento.
 - **Git**: 2.54.0 disponible. `gh` (GitHub CLI) **no instalado** → crear el repo remoto desde la web.
+- **Material original de clase** (notebooks previos + PDF + AirPassengers.csv): se movieron fuera
+  del repo a `D:\Jaime Ramos 2\00 Entorno Visual code\MLE2_Clase_Originales\` para que el repo
+  tenga únicamente los notebooks del proyecto. Pueden usarse como referencia de código.
 - **Clave API**: Groq → `GROQ_API_KEY` en `.env` (gitignoreado). Nunca subir claves al repo.
 
 ---

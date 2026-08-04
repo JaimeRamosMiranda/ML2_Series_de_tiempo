@@ -19,7 +19,7 @@ insights basado en Groq.
 ```
 ├── data/            # datos crudos (raw) y procesados
 ├── docs/            # documentación (estrategia git, etc.)
-├── notebooks/       # EDA/preprocesamiento y ML
+├── notebooks/       # notebooks del proyecto (EDA y ML)
 ├── scripts/         # preprocesamiento, entrenamiento y predicción
 ├── src/             # módulo de código reusable
 │   ├── data/        # carga y preprocesamiento
