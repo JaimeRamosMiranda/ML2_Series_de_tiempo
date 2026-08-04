@@ -82,7 +82,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 | Fase | Tareas | Estado |
 |---|---|---|
-| 0. Setup | Repo GitHub, estructura, .gitignore, requirements.txt, primer commit, ramas main/development | **EN CURSO** |
+| 0. Setup | Repo GitHub, estructura, .gitignore, requirements.txt, primer commit, ramas main/development | **EN CURSO** (local listo; falta remoto en GitHub) |
 | 1. Datos y EDA | Descargar dataset a `data/raw/`, notebook `01_preprocesamiento_eda.ipynb`, diccionario en README | Pendiente |
 | 2. Features | `src/features/build_features.py`: lags (1,7,30), rolling (7,30), calendario (año, mes, día, día de semana, semana), store/item categóricas; notebook `02` | Pendiente |
 | 3. Modelos | Backtesting walk-forward, comparar familias de la tabla de decisión; métricas offline y online | Pendiente |
@@ -108,7 +108,11 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
   librerías; si algo falla al instalar, usar un venv con Python 3.11/3.12.
 - **Instalados al inicio**: pandas 3.0.3, numpy 2.4.6, matplotlib 3.11.1, seaborn 0.13.2,
   scikit-learn 1.9.0, statsmodels 0.14.6, prophet 1.3.0, openai 2.44.0, joblib 1.5.3.
-- **Por instalar**: mlflow, dagshub, lightgbm, xgboost, pmdarima (catboost se instaló en clase).
+- **Instalados después (Fase 0/MLflow)**: mlflow 3.15.1, dagshub 0.7.1, pandas 2.3.3
+  (mlflow lo degradó desde 3.0.3), websockets 13.1 (necesario para la UI de MLflow).
+- **Por instalar**: lightgbm, xgboost, pmdarima (catboost se instaló en clase).
+- **MLflow local**: se usa backend **SQLite** (`sqlite:///mlruns/mlflow.db`), porque
+  MLflow 3.x puso el filesystem store en modo mantenimiento.
 - **Git**: 2.54.0 disponible. `gh` (GitHub CLI) **no instalado** → crear el repo remoto desde la web.
 - **Clave API**: Groq → `GROQ_API_KEY` en `.env` (gitignoreado). Nunca subir claves al repo.
 
@@ -130,7 +134,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 ## 7. Decisiones pendientes / riesgos
 
 - [ ] Crear repo en GitHub (web) y vincular el remoto local.
-- [ ] Instalar MLflow y DagsHub y validar en Python 3.14.
+- [x] Instalar MLflow y DagsHub y validar en Python 3.14 (funciona con SQLite + websockets 13).
 - [ ] Descargar el dataset a `data/raw/train.csv` (requiere cuenta Kaggle/API key o descarga manual).
 - [ ] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env`.
 - [ ] Definir si se hacen los retos opcionales (Docker/Azure).
@@ -141,9 +145,14 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 - MLflow es open-source y **gratis**. Componentes: Tracking (experimentos/runs con
   params + metrics + artifacts), Model Registry (versionado + alias como `Production`),
-  pyfunc (envoltura estándar para guardar/cargar/predicir), UI (`mlflow ui`).
+  pyfunc (envoltura estándar para guardar/cargar/predicir), UI (`python -m mlflow ui`).
 - Flujo: `mlflow.set_experiment(...)` → `with mlflow.start_run():` → `log_params`,
   `log_metrics`, `log_artifact`, `log_model` → `mlflow.register_model(runs:/<id>/model, name)`.
+- **Demo funcional**: `scripts/demo_mlflow.py` (modelo con AirPassengers). Ejecutar:
+  `python scripts/demo_mlflow.py`. Deja un experimento `demo_airpassengers`, el modelo
+  `airpassengers_demo` v1 con alias `champion`, y artefactos (gráfica + CSV).
+- Detalles de la API en MLflow 3.x: `log_model(..., name="model")` (ya no `artifact_path`),
+  alias con `MlflowClient().set_registered_model_alias(...)`, y tracking local con SQLite.
 - DagsHub gratuito: `import dagshub; dagshub.init(repo_owner, repo_name, mlflow=True)`
   configura el tracking remoto. Link de experimentos: `https://dagshub.com/<user>/<repo>/experiments`.
 - Cargar modelo productivo: `mlflow.pyfunc.load_model("models:/<nombre>@Production")`.
