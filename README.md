@@ -12,6 +12,7 @@ insights basado en Groq.
 
 - Fase 0 (setup del repositorio + MLflow demo): completada.
 - Fase 1 (datos y EDA): completada — `notebooks/01_preprocesamiento_eda.ipynb`, datos en `data/`.
+- Fase 2 (feature engineering): completada — `src/features/build_features.py`, `notebooks/02_feature_engineering.ipynb`.
 
 ## Estructura
 
