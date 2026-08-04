@@ -82,7 +82,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 | Fase | Tareas | Estado |
 |---|---|---|
-| 0. Setup | Repo GitHub, estructura, .gitignore, requirements.txt, primer commit, ramas main/development | **EN CURSO** (local listo; falta remoto en GitHub) |
+| 0. Setup | Repo GitHub, estructura, .gitignore, requirements.txt, primer commit, ramas main/development | **COMPLETADA** (PR #1 fusionada en main; gh instalado) |
 | 1. Datos y EDA | Descargar dataset a `data/raw/`, notebook `01_preprocesamiento_eda.ipynb`, diccionario en README | Pendiente |
 | 2. Features | `src/features/build_features.py`: lags (1,7,30), rolling (7,30), calendario (año, mes, día, día de semana, semana), store/item categóricas; notebook `02` | Pendiente |
 | 3. Modelos | Backtesting walk-forward, comparar familias de la tabla de decisión; métricas offline y online | Pendiente |
@@ -109,8 +109,9 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - **Instalados al inicio**: pandas 3.0.3, numpy 2.4.6, matplotlib 3.11.1, seaborn 0.13.2,
   scikit-learn 1.9.0, statsmodels 0.14.6, prophet 1.3.0, openai 2.44.0, joblib 1.5.3.
 - **Instalados después (Fase 0/MLflow)**: mlflow 3.15.1, dagshub 0.7.1, pandas 2.3.3
-  (mlflow lo degradó desde 3.0.3), websockets 13.1 (necesario para la UI de MLflow).
-- **Por instalar**: lightgbm, xgboost, pmdarima (catboost se instaló en clase).
+  (mlflow lo degradó desde 3.0.3), websockets 13.1 (necesario para la UI de MLflow),
+  kaggle 2.2.4, lightgbm 4.7.0, xgboost 3.4.0, pmdarima 2.1.1.
+- **GitHub CLI**: `gh` 2.97.0 instalado y autenticado como JaimeRamosMiranda (los PRs los maneja la IA).
 - **MLflow local**: se usa backend **SQLite** (`sqlite:///mlruns/mlflow.db`), porque
   MLflow 3.x puso el filesystem store en modo mantenimiento.
 - **Git**: 2.54.0 disponible. `gh` (GitHub CLI) **no instalado** → crear el repo remoto desde la web.
@@ -133,9 +134,11 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 7. Decisiones pendientes / riesgos
 
-- [ ] Crear repo en GitHub (web) y vincular el remoto local.
+- [x] Crear repo en GitHub (web) y vincular el remoto local. Repo: https://github.com/JaimeRamosMiranda/ML2_Series_de_tiempo
 - [x] Instalar MLflow y DagsHub y validar en Python 3.14 (funciona con SQLite + websockets 13).
-- [ ] Descargar el dataset a `data/raw/train.csv` (requiere cuenta Kaggle/API key o descarga manual).
+- [x] Instalar `gh` y autenticar (PR #1 `development→main` fusionada exitosamente).
+- [ ] Autenticar Kaggle CLI (`kaggle auth login`) y aceptar las reglas de la competición `demand-forecasting-kernels-only` para descargar el dataset.
+- [ ] Descargar el dataset a `data/raw/train.csv`.
 - [ ] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env`.
 - [ ] Definir si se hacen los retos opcionales (Docker/Azure).
 
