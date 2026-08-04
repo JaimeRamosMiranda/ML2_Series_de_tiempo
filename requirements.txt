@@ -1,0 +1,26 @@
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+matplotlib>=3.8
+seaborn>=0.13
+
+# Series de tiempo
+statsmodels>=0.14
+prophet>=1.1
+pmdarima>=2.0
+
+# Modelos
+lightgbm>=4.3
+xgboost>=2.0
+catboost>=1.2
+
+# MLflow + DagsHub
+mlflow>=2.14
+dagshub>=0.3
+
+# Agente genAI (compatible con Groq)
+openai>=1.40
+python-dotenv>=1.0
+
+# Persistencia
+joblib>=1.3
