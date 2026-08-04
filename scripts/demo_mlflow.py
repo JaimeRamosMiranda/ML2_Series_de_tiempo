@@ -28,7 +28,7 @@ mlflow.set_tracking_uri("sqlite:///" + str((Path(__file__).resolve().parents[1] 
 EXPERIMENT_NAME = "demo_airpassengers"
 mlflow.set_experiment(EXPERIMENT_NAME)
 
-DATA_PATH = Path(__file__).resolve().parents[1] / "notebooks" / "AirPassengers.csv"
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "external" / "AirPassengers.csv"
 OUTPUT_DIR = Path(__file__).resolve().parents[1] / "reports" / "figures"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
