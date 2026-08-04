@@ -31,4 +31,6 @@ Thumbs.db
 
 # Reportes/artefactos grandes no versionables
 reports/*.html
+reports/figures/*.png
+reports/figures/*.csv
 *.log
