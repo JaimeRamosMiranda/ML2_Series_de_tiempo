@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-04** (sesión 1: Fases 0–2 + README a/c)
+Última actualización: **2026-08-09** (sesión 2: subconjunto de datos <100 MB, métricas con sesgo, MLflow en Fase 3)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -13,6 +13,18 @@
 | #3 | Fase 2: feature engineering |
 | #4 | Separar material original de clase del repo |
 | #5 | README secciones a (problema de ML) y c (dataset/diccionario) |
+
+### Sesión 2 (sin PR todavía, cambios en rama `development`)
+- **Decisión clave**: reducir la base a **150 series (10 tiendas × 15 artículos)** para
+  cumplir el límite de ~100 MB del curso. `data/processed/train_features.csv` pasó de
+  98.3 MB a ~31 MB (total de data/processed ≈ 38 MB, raw ≈ 18 MB).
+- **Nuevo criterio de decisión**: el **sesgo (bias)** se usa para elegir el mejor modelo,
+  no solo como reporte. Regla: ranking combinado **MASE + WAPE**, descartando modelos con
+  `|rel_bias_pct| > 5%` y desempatando por el menor sesgo absoluto.
+- **MLflow desde la Fase 3**: cada modelo probado se registra como run + Model Registry
+  (alias `Production` al mejor según la regla). Ver `scripts/train.py`.
+- Nuevos archivos: `scripts/preprocess.py`, `scripts/train.py`, `src/models/metrics.py`,
+  `src/models/train_model.py`.
 
 ---
 
@@ -74,11 +86,11 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 | Tema | Decisión |
 |---|---|
-| Problema de ML | Supervisado / Regresión. Pronóstico de demanda multi-series (500 series). |
-| Dataset | **Store Item Demand Forecasting Challenge** (Kaggle `demand-forecasting-kernels-only`): 913k filas, 2013-2017, 10 tiendas × 50 items, ~1 MB. |
-| Horizonte | 90 días (3 meses). Split temporal: train hasta 2017-09-30, holdout oct–dic 2017. |
-| Métricas | RMSE, MAE, MAPE, sMAPE, **MASE**, **WAPE**, MedAE, Max Error, R², Bias. Decisión por ranking combinado MASE + WAPE. |
-| Modelos | Baselines (naive, seasonal-naive, media, año anterior), SARIMA, Prophet, Holt-Winters, LightGBM, XGBoost, CatBoost, RandomForest, ExtraTrees, MLPRegressor. Estrategia global vs por-item. |
+| Problema de ML | Supervisado / Regresión. Pronóstico de demanda multi-series. |
+| Dataset | **Store Item Demand Forecasting Challenge** (Kaggle `demand-forecasting-kernels-only`): 913k filas, 2013-2017, 10 tiendas × 50 items. **Sesión 2: subconjunto de 150 series (10 tiendas × 15 items)** para cumplir <100 MB. Items: `1, 2, 5, 6, 7, 8, 13, 14, 15, 16, 23, 24, 25, 28, 49` (5 de demanda alta, 5 media, 5 baja). Generado con `scripts/preprocess.py`. |
+| Horizonte | 90 días (3 meses). Split temporal: train hasta 2017-09-30, holdout oct–dic 2017. **Mejora sesión 2**: las features se construyen sobre la serie completa ANTES del split, así el holdout conserva los 90 días completos con lags válidos. |
+| Métricas | RMSE, MAE, MAPE, sMAPE, MASE, WAPE, MedAE, Max Error, R², **Bias** (`mean(pred-real)`, negativo = subestima) y **rel_bias_pct**. Decisión: ranking **MASE + WAPE**, filtrando `|rel_bias_pct| <= 5%`, desempate por menor sesgo. |
+| Modelos | Baselines (naive, seasonal-naive, media), LightGBM, XGBoost, CatBoost, RandomForest, ExtraTrees, MLPRegressor (estrategia global). SARIMA/Prophet/Holt-Winters pendientes de decidir con el subconjunto. |
 | MLflow | Local (`mlruns/`) + **DagsHub** como hosting remoto gratuito (link público de experimentos). |
 | Modelo productivo | Envoltura `mlflow.pyfunc` registrada en el Model Registry con alias `Production`. |
 | genAI | **Agente de insights (RAG-lite)** con **Groq** (API compatible con OpenAI, tier gratuito). Variable de entorno `GROQ_API_KEY`. |
@@ -94,8 +106,9 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | 0. Setup | Repo GitHub, estructura, .gitignore, requirements.txt, primer commit, ramas main/development | **COMPLETADA** (PR #1 fusionada en main; gh instalado) |
 | 1. Datos y EDA | Descargar dataset a `data/raw/`, notebook `01_preprocesamiento_eda.ipynb`, diccionario en README | **COMPLETADA** (dataset descargado vía Kaggle CLI; notebook ejecutado con 15/15 celdas OK) |
 | 2. Features | `src/features/build_features.py`: lags (1,7,30), rolling (7,30), calendario (año, mes, día, día de semana, semana), store/item categóricas; notebook `02` | **COMPLETADA** (módulo + notebook ejecutado; `data/processed/*_features.csv`) |
-| 3. Modelos | Backtesting walk-forward, comparar familias de la tabla de decisión; métricas offline y online | Pendiente |
-| 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | Pendiente |
+| 2b. Subconjunto | `scripts/preprocess.py`: filtrar a 150 series y reconstruir features sobre la serie completa (holdout 90 días completos) | **COMPLETADA** (sesión 2) |
+| 3. Modelos | Backtesting walk-forward, comparar familias; métricas offline y online. Runner con MLflow: `scripts/train.py` + `src/models/train_model.py` + `src/models/metrics.py` | **EN CURSO** (baselines + LightGBM validados con smoke test; pendiente run completo y resto de familias) |
+| 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | **EN CURSO** (local + SQLite funcional; alias Production automático con filtro de sesgo) |
 | 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite) | Pendiente |
 | 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | Pendiente |
 | 7. Documentación | README completo (diagrama Mermaid, Model Card, métricas offline/online, conclusiones), `docs/git_strategy.md` | Pendiente |
@@ -115,6 +128,9 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - **SO**: Windows (PowerShell 5.1).
 - **Python**: 3.14.5. OJO: versiones muy nuevas pueden no tener wheels de algunas
   librerías; si algo falla al instalar, usar un venv con Python 3.11/3.12.
+- **Sesión 2**: se creó `.venv/` con **Python 3.12** (gitignoreado) e instalado
+  `pip install -r requirements.txt` (mlflow 3.15.1, lightgbm 4.7.0, xgboost 3.4.0,
+  catboost 1.2.10, prophet 1.3.0, pmdarima 2.1.1). Activar con `.venv\Scripts\python.exe`.
 - **Instalados al inicio**: pandas 3.0.3, numpy 2.4.6, matplotlib 3.11.1, seaborn 0.13.2,
   scikit-learn 1.9.0, statsmodels 0.14.6, prophet 1.3.0, openai 2.44.0, joblib 1.5.3.
 - **Instalados después (Fase 0/MLflow)**: mlflow 3.15.1, dagshub 0.7.1, pandas 2.3.3
@@ -156,6 +172,10 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - [x] Mover material original de clase fuera del repo (a `MLE2_Clase_Originales/`).
 - [ ] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env`.
 - [ ] Definir si se hacen los retos opcionales (Docker/Azure).
+- [x] **Sesión 2**: reducir la base a 150 series (<100 MB) con `scripts/preprocess.py`.
+- [x] **Sesión 2**: incorporar **bias / rel_bias_pct** como criterio de selección de modelo.
+- [x] **Sesión 2**: MLflow integrado a la Fase 3 (`scripts/train.py`, alias `Production`).
+- [ ] README: actualizar sección c (dataset) al subconjunto de 150 series.
 
 ---
 
@@ -174,15 +194,26 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - DagsHub gratuito: `import dagshub; dagshub.init(repo_owner, repo_name, mlflow=True)`
   configura el tracking remoto. Link de experimentos: `https://dagshub.com/<user>/<repo>/experiments`.
 - Cargar modelo productivo: `mlflow.pyfunc.load_model("models:/<nombre>@Production")`.
+- **OJO MLflow 3.x + skops**: `mlflow.sklearn.log_model` falla para clases no estándar
+  (LightGBM, baselines custom) con "references untrusted types". `src/models/train_model.py`
+  lo resuelve automáticamente: detecta el error, extrae los tipos y reintenta con
+  `skops_trusted_types`. Para el alias `Production`, se espera a que la versión esté
+  `READY` antes de asignarlo.
+- El alias es **único por modelo**: asignarlo a una versión lo quita de la anterior.
 
 ---
 
 ## 9. Pasos siguientes (próxima sesión)
 
-1. Fase 3: modelos y backtesting (baselines, SARIMA, Prophet, LightGBM/XGBoost/CatBoost, etc.) con métricas RMSE/MAE/MAPE/sMAPE/MASE/WAPE.
-2. Fase 4: experimentos MLflow (local + DagsHub) y modelo productivo.
-3. Fase 5: agente genAI con Groq.
-4. Fase 6-8: scripts, documentación y release v1.0.0.
+1. Fase 3: correr `scripts/train.py` completo sobre las 150 series (baselines + LightGBM),
+   añadir XGBoost/CatBoost/RandomForest/ExtraTrees/MLP con `--all`, revisar métricas en
+   la UI de MLflow (`python -m mlflow ui`) y validar que `Production` sea el mejor.
+2. Fase 3b: backtesting walk-forward (métricas online) y, si procede, SARIMA/Prophet/Holt-Winters
+   con el subconjunto.
+3. Fase 4: MLflow remoto en DagsHub + modelo productivo `pyfunc`.
+4. Fase 5: agente genAI con Groq.
+5. Fase 6-8: actualizar README (subconjunto, diagrama, Model Card, métricas offline/online,
+   conclusiones), scripts/predict, PR final y release v1.0.0.
 
 ---
 
@@ -191,8 +222,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 1. **Clonar** el repo:
    `git clone https://github.com/JaimeRamosMiranda/ML2_Series_de_tiempo.git`
    y entrar a `ML2_Series_de_tiempo/`.
-2. **Crear/activar entorno** con Python 3.11–3.14 y luego:
-   `pip install -r requirements.txt`
+2. **Crear/activar entorno** (usar Python 3.12, ya validado):
+   `py -3.12 -m venv .venv` y luego `.\.venv\Scripts\python.exe -m pip install -r requirements.txt`
    (si algo falla por Python 3.14, usar Python 3.11/3.12).
 3. **Configurar credenciales** (una vez por máquina):
    - GitHub: `gh auth login` (los PRs los maneja la IA vía `gh`).
