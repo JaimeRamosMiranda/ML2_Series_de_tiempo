@@ -269,6 +269,10 @@ def promote_best_model(
         version = p.get("registered_model_version")
         if version is None or "mase" not in m or "wape" not in m:
             continue
+        try:
+            client.get_model_version(registered_model_name, int(version))
+        except Exception:  # noqa: BLE001 - versión borrada de un run obsoleto
+            continue
         rows.append({
             "run_id": r.info.run_id,
             "version": int(version),

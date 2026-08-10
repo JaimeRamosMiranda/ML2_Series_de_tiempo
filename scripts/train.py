@@ -31,13 +31,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.features.build_features import FEATURE_COLUMNS  # noqa: E402
+from src.models.configs import all_configs, baseline_configs, supervised_configs  # noqa: E402
 from src.models.metrics import naive_scale_by_series  # noqa: E402
 from src.models.train_model import (  # noqa: E402
     MAX_REL_BIAS_PCT,
-    MeanRegressor,
-    ModelConfig,
-    NaiveRegressor,
-    SeasonalNaiveRegressor,
     promote_best_model,
     train_and_log_model,
 )
@@ -47,132 +44,6 @@ EXPERIMENT_NAME = "demand_forecast_fase3"
 REGISTERED_MODEL = "demand_forecast"
 
 TARGET = "sales"
-
-BASE_MODELS: dict[str, ModelConfig] = {
-    "naive": ModelConfig(
-        name="naive",
-        family="baseline",
-        estimator_factory=lambda: NaiveRegressor(),
-        params={"type": "naive", "lag": 1},
-    ),
-    "seasonal_naive": ModelConfig(
-        name="seasonal_naive",
-        family="baseline",
-        estimator_factory=lambda: SeasonalNaiveRegressor(),
-        params={"type": "seasonal_naive", "lag": 7},
-    ),
-    "mean": ModelConfig(
-        name="mean",
-        family="baseline",
-        estimator_factory=lambda: MeanRegressor(),
-        params={"type": "mean", "window": 30},
-    ),
-}
-
-
-def supervised_configs() -> dict[str, ModelConfig]:
-    """Configuraciones de modelos supervisados (estrategia global)."""
-    from lightgbm import LGBMRegressor
-
-    lgb_params = {
-        "n_estimators": 300,
-        "learning_rate": 0.05,
-        "num_leaves": 63,
-        "random_state": 42,
-        "n_jobs": -1,
-        "verbose": -1,
-    }
-    configs = {
-        "lightgbm": ModelConfig(
-            name="lightgbm",
-            family="gbm",
-            estimator_factory=lambda: LGBMRegressor(**lgb_params),
-            params=dict(lgb_params),
-        ),
-    }
-    return configs
-
-
-def all_configs() -> dict[str, ModelConfig]:
-    """Todas las familias de modelos (baselines + supervisados)."""
-    from catboost import CatBoostRegressor
-    from sklearn.ensemble import ExtraTreesRegressor, RandomForestRegressor
-    from sklearn.neural_network import MLPRegressor
-    from xgboost import XGBRegressor
-
-    configs = dict(BASE_MODELS)
-    configs.update(supervised_configs())
-
-    xgb_params = {
-        "n_estimators": 300,
-        "eta": 0.05,
-        "max_depth": 6,
-        "random_state": 42,
-        "n_jobs": -1,
-    }
-    configs["xgboost"] = ModelConfig(
-        name="xgboost",
-        family="gbm",
-        estimator_factory=lambda: XGBRegressor(**xgb_params),
-        params=dict(xgb_params),
-    )
-
-    cb_params = {
-        "iterations": 300,
-        "learning_rate": 0.05,
-        "depth": 6,
-        "random_state": 42,
-        "verbose": 0,
-        "thread_count": -1,
-    }
-    configs["catboost"] = ModelConfig(
-        name="catboost",
-        family="gbm",
-        estimator_factory=lambda: CatBoostRegressor(**cb_params),
-        params=dict(cb_params),
-    )
-
-    rf_params = {
-        "n_estimators": 200,
-        "max_depth": 20,
-        "min_samples_leaf": 5,
-        "random_state": 42,
-        "n_jobs": -1,
-    }
-    configs["random_forest"] = ModelConfig(
-        name="random_forest",
-        family="ensemble",
-        estimator_factory=lambda: RandomForestRegressor(**rf_params),
-        params=dict(rf_params),
-    )
-
-    et_params = {
-        "n_estimators": 200,
-        "max_depth": 20,
-        "min_samples_leaf": 5,
-        "random_state": 42,
-        "n_jobs": -1,
-    }
-    configs["extra_trees"] = ModelConfig(
-        name="extra_trees",
-        family="ensemble",
-        estimator_factory=lambda: ExtraTreesRegressor(**et_params),
-        params=dict(et_params),
-    )
-
-    mlp_params = {
-        "hidden_layer_sizes": (64, 32),
-        "max_iter": 300,
-        "random_state": 42,
-        "early_stopping": True,
-    }
-    configs["mlp"] = ModelConfig(
-        name="mlp",
-        family="neural_net",
-        estimator_factory=lambda: MLPRegressor(**mlp_params),
-        params=dict(mlp_params),
-    )
-    return configs
 
 
 def load_data(
@@ -225,15 +96,14 @@ def main() -> None:
     if args.all:
         configs = all_configs()
     else:
-        supervised = supervised_configs()
-        available = {**BASE_MODELS, **supervised}
+        available = {**baseline_configs(), **supervised_configs()}
         configs = {
             name: available[name]
             for name in args.models.split(",")
             if name in available
         }
     if not configs:
-        available = sorted(set(BASE_MODELS) | set(supervised_configs()))
+        available = sorted(set(baseline_configs()) | set(supervised_configs()))
         print(f"Sin modelos válidos. Opciones: {', '.join(available)}")
         sys.exit(1)
 

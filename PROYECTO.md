@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-09** (sesión 2: subconjunto de datos <100 MB, métricas con sesgo, MLflow en Fase 3)
+Última actualización: **2026-08-09** (sesión 3: notebooks 01 y 02 corregidos para el subconjunto de 150 series)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -13,6 +13,69 @@
 | #3 | Fase 2: feature engineering |
 | #4 | Separar material original de clase del repo |
 | #5 | README secciones a (problema de ML) y c (dataset/diccionario) |
+
+### Sesión 3 (sin PR todavía, cambios en rama `development`)
+- **Notebooks 01 y 02 corregidos** para trabajar con el subconjunto de 150 series:
+  - `01_preprocesamiento_eda.ipynb`: carga `data/raw/train.csv` completo, filtra a las
+    150 series (10 tiendas × 15 items) y todo el EDA/split/guardado usa el subconjunto.
+    Re-ejecutado: 15/15 celdas OK → `train.csv` 260,100 filas y `holdout.csv` 13,800
+    (92 días × 150 series).
+  - `02_feature_engineering.ipynb`: corrige el flujo a **features sobre la serie completa
+    ANTES del split** (decisión sesión 2): concatena train+holdout, aplica `build_features`
+    y vuelve a dividir. Re-ejecutado: 9/9 celdas OK → `train_features.csv` 255,600 filas
+    y `holdout_features.csv` **13,800 filas con 0 NaN** (antes el holdout perdía filas por
+    lags NaN). Verificado con pandas.
+- **nbconvert instalado en el venv** (faltaba): `pip install nbconvert ipykernel`.
+  Ejecutar notebooks desde CLI:
+  `& .venv\Scripts\python.exe -m nbconvert --to notebook --execute --inplace notebooks\XX_*.ipynb`
+  (con `workdir` en `notebooks/`, porque usan `Path.cwd().parent`).
+- **Fase 3 corrida en `notebooks/03_entrenamiento_mlflow.ipynb`** (11/11 celdas OK):
+  experimento `demand_forecast_fase3`, modelo registrado `demand_forecast`.
+
+  | Modelo | MASE | WAPE | rel_bias% | ¿Production? |
+  |---|---|---|---|---|
+  | naive | 1.038 | 19.23% | +0.31% | no |
+  | seasonal_naive | 0.884 | 16.01% | +2.44% | no |
+  | mean | 0.918 | 17.33% | **+5.32%** | descartado (sesgo > 5%) |
+  | **lightgbm** | **0.581** | **10.41%** | **-0.25%** | **sí (v9)** |
+
+  - Producción: alias `Production` → **lightgbm v9** (la media quedó descartada por
+    `rel_bias > 5%`, como esperaba la regla). Consumible vía
+    `mlflow.pyfunc.load_model("models:/demand_forecast@Production")`.
+  - OJO: al ejecutar el notebook 03 se regeneraron los CSVs de `data/processed/` (mismos
+    contenidos que los de la sesión 2). `mlruns/` y `.venv/` están gitignoreados.
+  - OJO: MLflow 3.x avisa "has no artifacts at artifact path 'model'..." al registrar;
+    es inofensivo (usa `name="model"` en lugar de `artifact_path`).
+- **Fase 3 ampliada en `notebooks/04_modelos_adicionales.ipynb`** (6/6 celdas OK):
+  nuevas familias con `src/models/configs.py` (catálogo central, reusado por `scripts/train.py`):
+
+  | Modelo | MASE | WAPE | rel_bias% | versión |
+  |---|---|---|---|---|
+  | xgboost | 0.581 | 10.44% | -0.18% | v10 |
+  | catboost | 0.586 | 10.53% | -0.39% | v11 |
+  | random_forest | 0.611 | 11.03% | -0.07% | v12 |
+  | extra_trees | 0.601 | 10.83% | -0.21% | v13 |
+  | mlp | 0.604 | 10.94% | +0.66% | v14 |
+
+  - **Producción se mantiene en lightgbm v9** (MASE=0.581, WAPE=10.41%): XGBoost empata en MASE
+    pero pierde por WAPE (ranking combinado MASE + WAPE).
+  - `scripts/train.py` refactorizado: `BASE_MODELS`/`all_configs()` ahora viven en
+    `src/models/configs.py` (un solo lugar para parámetros de comparación).
+- **Fase 3b en `notebooks/05_backtesting_walkforward.ipynb`** (7/7 celdas OK):
+  backtesting walk-forward (métricas **online**) con `src/models/backtesting.py`:
+  4 folds de ~90 días (dic-2016 .. sep-2017), re-entrenando por fold.
+
+  | Modelo | MASE online | WAPE online | bias online | rel_bias% |
+  |---|---|---|---|---|
+  | **lightgbm** | **0.604** | **10.18%** | -0.10 | -0.11% |
+  | xgboost | 0.605 | 10.20% | -0.11 | -0.13% |
+  | seasonal_naive | 0.866 | 14.71% | -0.01 | -0.03% |
+  | mean | 0.885 | 15.64% | +0.04 | +0.05% |
+  | naive | 1.091 | 18.94% | +0.08 | +0.12% |
+
+  - El orden online coincide con el offline (LightGBM primero, XGBoost casi empatado) →
+    la selección no depende de un solo split. Resultados en el experimento
+    `demand_forecast_backtest`.
 
 ### Sesión 2 (sin PR todavía, cambios en rama `development`)
 - **Decisión clave**: reducir la base a **150 series (10 tiendas × 15 artículos)** para
@@ -107,7 +170,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | 1. Datos y EDA | Descargar dataset a `data/raw/`, notebook `01_preprocesamiento_eda.ipynb`, diccionario en README | **COMPLETADA** (dataset descargado vía Kaggle CLI; notebook ejecutado con 15/15 celdas OK) |
 | 2. Features | `src/features/build_features.py`: lags (1,7,30), rolling (7,30), calendario (año, mes, día, día de semana, semana), store/item categóricas; notebook `02` | **COMPLETADA** (módulo + notebook ejecutado; `data/processed/*_features.csv`) |
 | 2b. Subconjunto | `scripts/preprocess.py`: filtrar a 150 series y reconstruir features sobre la serie completa (holdout 90 días completos) | **COMPLETADA** (sesión 2) |
-| 3. Modelos | Backtesting walk-forward, comparar familias; métricas offline y online. Runner con MLflow: `scripts/train.py` + `src/models/train_model.py` + `src/models/metrics.py` | **EN CURSO** (baselines + LightGBM validados con smoke test; pendiente run completo y resto de familias) |
+| 3. Modelos | Backtesting walk-forward, comparar familias; métricas offline y online. Runner con MLflow: `scripts/train.py` + `src/models/train_model.py` + `src/models/metrics.py` | **COMPLETADA** (offline en notebooks 03 y 04 → lightgbm v9; online en notebook 05 → lightgbm; pendiente opcional SARIMA/Prophet con el subconjunto) |
 | 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | **EN CURSO** (local + SQLite funcional; alias Production automático con filtro de sesgo) |
 | 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite) | Pendiente |
 | 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | Pendiente |
@@ -145,6 +208,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
   tenga únicamente los notebooks del proyecto. Pueden usarse como referencia de código.
 - **Clave API**: Groq → `GROQ_API_KEY` en `.env` (gitignoreado). Nunca subir claves al repo.
 - **Jupyter/nbconvert**: para ejecutar notebooks desde CLI usar `python -m nbconvert --to notebook --execute --inplace <archivo>` (el subcomando `jupyter-nbconvert` no está registrado).
+- **Sesión 3**: se instalaron `nbconvert` + `ipykernel` en el venv (faltaban para ejecutar
+  notebooks desde CLI).
 
 ---
 
@@ -176,6 +241,10 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - [x] **Sesión 2**: incorporar **bias / rel_bias_pct** como criterio de selección de modelo.
 - [x] **Sesión 2**: MLflow integrado a la Fase 3 (`scripts/train.py`, alias `Production`).
 - [ ] README: actualizar sección c (dataset) al subconjunto de 150 series.
+- [ ] **Sesión 4 (pendiente)**: Fase 4 en dos partes — (a) modelo productivo `pyfunc` local
+      (notebook 06) y (b) MLflow remoto en **DagsHub**: crear cuenta/repo, obtener `DAGSHUB_TOKEN`
+      (o usar el usuario), `dagshub.init(repo_owner, repo_name, mlflow=True)` y registrar runs
+      remotos para tener el link público de evidencia. Ver sección 9.
 
 ---
 
@@ -205,15 +274,31 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 9. Pasos siguientes (próxima sesión)
 
-1. Fase 3: correr `scripts/train.py` completo sobre las 150 series (baselines + LightGBM),
-   añadir XGBoost/CatBoost/RandomForest/ExtraTrees/MLP con `--all`, revisar métricas en
-   la UI de MLflow (`python -m mlflow ui`) y validar que `Production` sea el mejor.
-2. Fase 3b: backtesting walk-forward (métricas online) y, si procede, SARIMA/Prophet/Holt-Winters
-   con el subconjunto.
-3. Fase 4: MLflow remoto en DagsHub + modelo productivo `pyfunc`.
-4. Fase 5: agente genAI con Groq.
-5. Fase 6-8: actualizar README (subconjunto, diagrama, Model Card, métricas offline/online,
-   conclusiones), scripts/predict, PR final y release v1.0.0.
+> **Estado al cierre de la sesión 3**: Fases 0-3 completadas. Notebooks 01-05 ejecutados
+> y commiteados. `Production` local = **lightgbm v9** (offline y online).
+
+1. **Fase 4 — notebook `06_mlflow_dagshub_pyfunc.ipynb`**:
+   - Parte local: cargar `models:/demand_forecast@Production`, predecir `data/raw/test.csv`
+     (ene-mar 2018), guardar submission y envolver el modelo como `pyfunc` (ya está logueado
+     con `mlflow.sklearn.log_model`; la envoltura se consume con `mlflow.pyfunc.load_model`).
+   - Parte remota (DagsHub, requiere credenciales del estudiante):
+     1. Crear cuenta en https://dagshub.com (usuario: same as GitHub, JaimeRamosMiranda).
+     2. Crear repositorio (p.ej. `ML2_Series_de_tiempo`).
+     3. Token: Settings → User Settings → Tokens → `DAGSHUB_TOKEN`.
+     4. Guardar `DAGSHUB_TOKEN` en `.env` (gitignoreado).
+     5. En el notebook: `import dagshub; dagshub.init("JaimeRamosMiranda", "<repo>", mlflow=True)`
+        y registrar los runs/experimentos remotos.
+     6. Link de evidencia: `https://dagshub.com/<user>/<repo>/experiments`.
+   - OJO: si el token va por `dagshub.init(..., mlflow=True)`, MLflow apunta a DagsHub;
+     volver a `mlflow.set_tracking_uri("sqlite:///mlruns/mlflow.db")` para lo local.
+2. **Fase 5 — notebook `07_agente_insights.ipynb`**: agente genAI (RAG-lite) con Groq:
+   `GROQ_API_KEY` en `.env` (tier gratuito: https://console.groq.com), modelo
+   `llama-3.3-70b-versatile`; 3 pasos: contexto (stats + pronóstico), retrieval TF-IDF sobre
+   fichas de serie, generación de insights. `src/agent/insights_agent.py` (pendiente de crear).
+3. **Fase 6-8**: `scripts/predict.py` (CLI, submission con test.csv), actualizar README
+   (subconjunto 150 series, diagrama Mermaid, Model Card, métricas offline/online con los
+   resultados de los notebooks 03-05, conclusiones), `docs/git_strategy.md`, PR final
+   development→main y release v1.0.0 (último commit 30/8).
 
 ---
 
@@ -231,6 +316,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
      — el dataset ya está commiteado en `data/raw/`.
    - Groq: copiar `.env.example` a `.env` y pegar `GROQ_API_KEY`
      (tier gratuito: https://console.groq.com).
+   - DagsHub (Fase 4, sesión 4): `DAGSHUB_TOKEN` en `.env` y `dagshub.init(...)`.
 4. **Recordar**:
    - Trabajar en la rama `development` (nunca commitear directo a `main`).
    - MLflow local usa SQLite: `sqlite:///mlruns/mlflow.db` (ver `scripts/demo_mlflow.py`).
