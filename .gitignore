@@ -33,4 +33,6 @@ Thumbs.db
 reports/*.html
 reports/figures/*.png
 reports/figures/*.csv
+reports/submissions/*
+!reports/submissions/.gitkeep
 *.log

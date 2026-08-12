@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-09** (sesión 3: notebooks 01 y 02 corregidos para el subconjunto de 150 series)
+Última actualización: **2026-08-12** (sesión 4: Fase 4 completa — notebook 06 con pyfunc, submission ene-mar 2018 y remoto DagsHub con run + modelo `demand_forecast` v2 Production)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -13,6 +13,31 @@
 | #3 | Fase 2: feature engineering |
 | #4 | Separar material original de clase del repo |
 | #5 | README secciones a (problema de ML) y c (dataset/diccionario) |
+
+### Sesión 4 (sin PR todavía, cambios en rama `development`)
+- **Fase 4 — parte local en `notebooks/06_mlflow_dagshub_pyfunc.ipynb`** (14 celdas OK):
+  - Se consume el modelo de producción con `mlflow.pyfunc.load_model("models:/demand_forecast@Production")`
+    (PyFuncModel) y se inspecciona el `MLmodel` del artefacto (flavors `python_function` + `sklearn`
+    con `skops_trusted_types` para LightGBM).
+  - **Re-entrenamiento automático**: al clonar en una PC nueva el `mlruns/` local está vacío; el
+    notebook detecta que no hay `Production` y re-entrena **LightGBM** con el config de fase 3
+    (MASE=0.581, WAPE=10.41%, rel_bias=-0.25%), lo registra como v1 y lo promueve a `Production`.
+  - **Predicción recursiva ene-mar 2018**: como las features son día-relativas (lag_1, rolling),
+    predecir los 90 días de una sola vez deja NaN desde el día 2 (88200 NaN). Se implementa
+    **pronóstico día a día**: se rellenan las ventas predichas para que los lags/rolling del día
+    siguiente sean válidos (historial real + predicciones previas).
+  - **Submission** `reports/submissions/submission_production.csv` (gitignoreado): 13,500 filas
+    (150 series × 90 días), media diaria 52.5 unidades vs 56.2 del historial y 52 del baseline
+    del sample_submission → escala coherente. Gráfica en `reports/figures/forecast_ene_mar_2018.png`.
+  - **Parte remota (DagsHub)**: la última celda se omite sin credenciales. Falta crear cuenta/repo/token
+    y poner `DAGSHUB_TOKEN`/`DAGSHUB_REPO` en `.env`; al re-ejecutar se suben los runs al link público.
+- **OJO artefactos**: el kernel de Jupyter corre con `cwd=notebooks/`; si MLflow crea runs desde el
+  notebook, sus artefactos caen en `notebooks/mlruns/` (gitignoreado). El notebook 06 fija
+  `MLFLOW_DEFAULT_ARTIFACT_ROOT=<raíz>/mlruns` para que los runs nuevos queden en `mlruns/` de la raíz.
+- **Entorno en esta PC**: no hay `.venv` (la otra PC usaba Python 3.12); esta máquina usa el Python
+  global **3.14.5** con mlflow 3.15.1, lightgbm 4.7.0, dagshub, nbconvert, etc. **No está instalado
+  `catboost`** (el notebook 06 define el config de LightGBM sin importar `configs.py`). Ejecutar:
+  `python -m nbconvert --to notebook --execute --inplace notebooks\06_*.ipynb`.
 
 ### Sesión 3 (sin PR todavía, cambios en rama `development`)
 - **Notebooks 01 y 02 corregidos** para trabajar con el subconjunto de 150 series:
@@ -171,7 +196,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | 2. Features | `src/features/build_features.py`: lags (1,7,30), rolling (7,30), calendario (año, mes, día, día de semana, semana), store/item categóricas; notebook `02` | **COMPLETADA** (módulo + notebook ejecutado; `data/processed/*_features.csv`) |
 | 2b. Subconjunto | `scripts/preprocess.py`: filtrar a 150 series y reconstruir features sobre la serie completa (holdout 90 días completos) | **COMPLETADA** (sesión 2) |
 | 3. Modelos | Backtesting walk-forward, comparar familias; métricas offline y online. Runner con MLflow: `scripts/train.py` + `src/models/train_model.py` + `src/models/metrics.py` | **COMPLETADA** (offline en notebooks 03 y 04 → lightgbm v9; online en notebook 05 → lightgbm; pendiente opcional SARIMA/Prophet con el subconjunto) |
-| 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | **EN CURSO** (local + SQLite funcional; alias Production automático con filtro de sesgo) |
+| 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | **COMPLETADA** (notebook 06: pyfunc + submission ene-mar 2018; remoto en https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments → `demand_forecast` v2 Production) |
 | 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite) | Pendiente |
 | 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | Pendiente |
 | 7. Documentación | README completo (diagrama Mermaid, Model Card, métricas offline/online, conclusiones), `docs/git_strategy.md` | Pendiente |
@@ -240,11 +265,15 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - [x] **Sesión 2**: reducir la base a 150 series (<100 MB) con `scripts/preprocess.py`.
 - [x] **Sesión 2**: incorporar **bias / rel_bias_pct** como criterio de selección de modelo.
 - [x] **Sesión 2**: MLflow integrado a la Fase 3 (`scripts/train.py`, alias `Production`).
-- [ ] README: actualizar sección c (dataset) al subconjunto de 150 series.
-- [ ] **Sesión 4 (pendiente)**: Fase 4 en dos partes — (a) modelo productivo `pyfunc` local
-      (notebook 06) y (b) MLflow remoto en **DagsHub**: crear cuenta/repo, obtener `DAGSHUB_TOKEN`
-      (o usar el usuario), `dagshub.init(repo_owner, repo_name, mlflow=True)` y registrar runs
-      remotos para tener el link público de evidencia. Ver sección 9.
+- [x] README: actualizar sección c (dataset) al subconjunto de 150 series (sesión 4: nueva
+      subsección 3.2 "Subconjunto usado en el proyecto"; aclarado en secciones 1.2/1.3/1.4/3.5/5).
+- [x] **Sesión 4**: Fase 4 **COMPLETADA** — notebook 06 consume el modelo
+      productivo como `pyfunc`, predice `data/raw/test.csv` (ene-mar 2018) con **pronóstico
+      recursivo** y guarda la submission. **Remoto DagsHub resuelto**: cuenta/repo
+      `jaimeramos124/ML2_Series_de_tiempo`, `DAGSHUB_TOKEN` en `.env` (gitignoreado); con
+      `dagshub.init(repo, owner, mlflow=True)` se subió el run y se registró
+      `demand_forecast` **v2 → alias `Production`**. Evidencia:
+      https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments
 
 ---
 
@@ -260,8 +289,9 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
   `airpassengers_demo` v1 con alias `champion`, y artefactos (gráfica + CSV).
 - Detalles de la API en MLflow 3.x: `log_model(..., name="model")` (ya no `artifact_path`),
   alias con `MlflowClient().set_registered_model_alias(...)`, y tracking local con SQLite.
-- DagsHub gratuito: `import dagshub; dagshub.init(repo_owner, repo_name, mlflow=True)`
-  configura el tracking remoto. Link de experimentos: `https://dagshub.com/<user>/<repo>/experiments`.
+- DagsHub gratuito: `import dagshub; dagshub.init(repo_name, repo_owner, mlflow=True)`
+  configura el tracking remoto (OJO dagshub 0.7.x: el **primer** argumento es el repo).
+  Link de experimentos: `https://dagshub.com/<user>/<repo>/experiments`.
 - Cargar modelo productivo: `mlflow.pyfunc.load_model("models:/<nombre>@Production")`.
 - **OJO MLflow 3.x + skops**: `mlflow.sklearn.log_model` falla para clases no estándar
   (LightGBM, baselines custom) con "references untrusted types". `src/models/train_model.py`
@@ -274,23 +304,17 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 9. Pasos siguientes (próxima sesión)
 
-> **Estado al cierre de la sesión 3**: Fases 0-3 completadas. Notebooks 01-05 ejecutados
-> y commiteados. `Production` local = **lightgbm v9** (offline y online).
+> **Estado al cierre de la sesión 4**: Fases 0-4 completadas. Notebooks 01-06 ejecutados
+> y commiteados. **Fase 4 completa**: parte local (pyfunc + submission ene-mar 2018) y
+> **remoto DagsHub** (run + `demand_forecast` v2 → `Production`).
+> Evidencia: https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments
 
-1. **Fase 4 — notebook `06_mlflow_dagshub_pyfunc.ipynb`**:
-   - Parte local: cargar `models:/demand_forecast@Production`, predecir `data/raw/test.csv`
-     (ene-mar 2018), guardar submission y envolver el modelo como `pyfunc` (ya está logueado
-     con `mlflow.sklearn.log_model`; la envoltura se consume con `mlflow.pyfunc.load_model`).
-   - Parte remota (DagsHub, requiere credenciales del estudiante):
-     1. Crear cuenta en https://dagshub.com (usuario: same as GitHub, JaimeRamosMiranda).
-     2. Crear repositorio (p.ej. `ML2_Series_de_tiempo`).
-     3. Token: Settings → User Settings → Tokens → `DAGSHUB_TOKEN`.
-     4. Guardar `DAGSHUB_TOKEN` en `.env` (gitignoreado).
-     5. En el notebook: `import dagshub; dagshub.init("JaimeRamosMiranda", "<repo>", mlflow=True)`
-        y registrar los runs/experimentos remotos.
-     6. Link de evidencia: `https://dagshub.com/<user>/<repo>/experiments`.
-   - OJO: si el token va por `dagshub.init(..., mlflow=True)`, MLflow apunta a DagsHub;
-     volver a `mlflow.set_tracking_uri("sqlite:///mlruns/mlflow.db")` para lo local.
+1. ~~**Fase 4 — remoto en DagsHub**~~ **HECHO** (sesión 4): cuenta `jaimeramos124`,
+   repo `ML2_Series_de_tiempo`, `DAGSHUB_TOKEN` en `.env` (gitignoreado). Nota: en
+   dagshub 0.7.x la firma es `dagshub.init(repo_name, repo_owner, mlflow=True)` — el
+   primer argumento es el **repo**, no el owner. Si se re-ejecuta el notebook 06 en
+   otra máquina (mlruns local vacío), re-entrena LightGBM, registra v2/v3 en DagsHub y
+   reasigna `Production` automáticamente.
 2. **Fase 5 — notebook `07_agente_insights.ipynb`**: agente genAI (RAG-lite) con Groq:
    `GROQ_API_KEY` en `.env` (tier gratuito: https://console.groq.com), modelo
    `llama-3.3-70b-versatile`; 3 pasos: contexto (stats + pronóstico), retrieval TF-IDF sobre

@@ -2,9 +2,13 @@
 
 Proyecto final — Curso II, Especialización en Machine Learning Engineering.
 
-Pronóstico de demanda para **500 series de tiempo** (ventas diarias por tienda-artículo)
+Pronóstico de demanda para **series de tiempo** (ventas diarias por tienda-artículo)
 usando **MLflow** como herramienta de administración de experimentos y modelos, y un
 **agente genAI de insights** (RAG-lite con Groq) que explica los pronósticos.
+
+> El dataset original tiene **500 series** (10 tiendas × 50 artículos); por el límite de
+> ~100 MB del curso, este proyecto trabaja con un **subconjunto de 150 series**
+> (10 tiendas × 15 artículos). Ver sección 3.
 
 > Documento de contexto general del proyecto: [`PROYECTO.md`](PROYECTO.md).
 
@@ -37,11 +41,14 @@ asignación de espacio y presupuesto por tienda.
 - **Tipo**: Machine Learning **supervisado** → **regresión** sobre series de tiempo múltiples.
 - **Objetivo**: predecir las **unidades vendidas** (`sales`) de cada serie para los
   **próximos 90 días**.
-- **Series**: 500 series diarias independientes, cada una identificada por `(store, item)`.
+- **Series**: el dataset original tiene 500 series diarias independientes, identificadas
+  por `(store, item)`. **Este proyecto usa un subconjunto de 150 series**
+  (10 tiendas × 15 artículos, ver sección 3) elegido para cumplir el límite de tamaño
+  del curso.
 - **Horizonte**: 90 días (3 meses) por serie.
 
 Formalmente: dado el historial de ventas de cada serie
-`Y_s = {y_{s,t-1}, ..., y_{s,t-T}}` para `s = 1..500`, se quiere estimar
+`Y_s = {y_{s,t-1}, ..., y_{s,t-T}}` para `s = 1..150`, se quiere estimar
 `y_{s,t+1}, ..., y_{s,t+90}`.
 
 ### 1.3 Enfoque de modelado
@@ -57,9 +64,9 @@ datos), comparando:
 | Supervisados (otros) | RandomForest, ExtraTrees, MLPRegressor |
 
 Los modelos supervisados usan un **modelo global** (un solo modelo entrena sobre las
-features de las 500 series) con features de la Fase 2: calendario, lags (1, 7, 30) y
-estadísticas móviles (media/desviación de 7 y 30 días), con `store` e `item` como
-categóricas.
+features de las **150 series del subconjunto**) con features de la Fase 2: calendario,
+lags (1, 7, 30) y estadísticas móviles (media/desviación de 7 y 30 días), con `store` e
+`item` como categóricas.
 
 ### 1.4 Métricas de evaluación y criterio de éxito
 
@@ -71,7 +78,7 @@ categóricas.
 | **WAPE** | Error absoluto ponderado agregado (visión de negocio/inventario) |
 
 - **Criterio de decisión**: ranking combinado de **MASE + WAPE**; desempate con sMAPE y
-  estabilidad entre las 500 series (menor dispersión del error).
+  estabilidad entre las series del subconjunto (menor dispersión del error).
 - Se reportan métricas **offline** (holdout oct–dic 2017) y **online** (backtest por
   ventanas deslizantes que simula producción).
 
@@ -95,7 +102,24 @@ Contiene **913,000 registros** de ventas diarias de **10 tiendas × 50 artículo
 **sin valores nulos, sin duplicados y sin ventas negativas**, con series diarias completas
 (sin fechas faltantes).
 
-### 3.2 Diccionario de datos
+### 3.2 Subconjunto usado en el proyecto
+
+Por el límite de **~100 MB del curso**, el proyecto trabaja con un **subconjunto de
+150 series = 10 tiendas × 15 artículos** (mezcla de demanda alta, media y baja). Todos
+los pasos (EDA, features, entrenamiento, evaluación y predicción) usan solo este
+subconjunto.
+
+- **Tiendas**: 1–10 (las 10).
+- **Artículos (15)**: `1, 2, 5, 6, 7, 8, 13, 14, 15, 16, 23, 24, 25, 28, 49`.
+- **Historial completo del subconjunto**: 273,900 filas (150 series × 1,826 días).
+- **Split temporal**: `train` → 260,100 filas (hasta 2017-09-30); `holdout` → 13,800
+  filas (oct–dic 2017). Con features: `train_features.csv` 255,600 y
+  `holdout_features.csv` 13,800 filas.
+
+> Las métricas de las secciones 5 (offline/online) y la submission de la Fase 4 se
+> refieren **exclusivamente a este subconjunto**, no a las 500 series originales.
+
+### 3.3 Diccionario de datos
 
 | Columna | Tipo | Descripción |
 |---|---|---|
@@ -104,7 +128,7 @@ Contiene **913,000 registros** de ventas diarias de **10 tiendas × 50 artículo
 | `item` | `int64` | Identificador del artículo (1–50) |
 | `sales` | `int64` | **Target**. Unidades vendidas del artículo en la tienda durante esa fecha (entero, >= 0) |
 
-### 3.3 Volumen y estructura
+### 3.4 Volumen y estructura
 
 | Atributo | Valor |
 |---|---|
@@ -116,14 +140,14 @@ Contiene **913,000 registros** de ventas diarias de **10 tiendas × 50 artículo
 | Ventas negativas | 0 |
 | Tamaño | ~17 MB (train.csv) |
 
-### 3.4 Archivos adicionales
+### 3.5 Archivos adicionales
 
 | Archivo | Contenido |
 |---|---|
-| `test.csv` | 2018-01-01 a 2018-03-31 (próximos 3 meses) sin columna `sales`; se usará en `predict.py` para el forecast "en producción" |
-| `sample_submission.csv` | Formato de entrega de la competición |
+| `test.csv` | 2018-01-01 a 2018-03-31 (próximos 3 meses, 45,000 filas para las 500 series) sin columna `sales`. La Fase 4 predice solo las **150 series del subconjunto** (13,500 filas) y guarda `reports/submissions/submission_production.csv` |
+| `sample_submission.csv` | Formato de entrega de la competición (45,000 filas). La submission del proyecto cubre solo el subconjunto: es **demostrativa**, no apta para el leaderboard |
 
-### 3.5 Preprocesamiento y split
+### 3.6 Preprocesamiento y split
 
 - Se separaron las features del target y se construyó el dataset supervisado en
   `src/features/build_features.py` (ver Fase 2).
@@ -141,7 +165,9 @@ Contiene **913,000 registros** de ventas diarias de **10 tiendas × 50 artículo
 
 ## 5. Resultados con métricas offline y online (e)
 
-*Pendiente de completar (se llenará con los resultados de las Fases 3 y 4).*
+*Pendiente de completar (se llenará con los resultados de las Fases 3 y 4). Las métricas
+corresponden al subconjunto de 150 series: offline sobre el holdout oct–dic 2017 y
+online con backtesting walk-forward.*
 
 ---
 
