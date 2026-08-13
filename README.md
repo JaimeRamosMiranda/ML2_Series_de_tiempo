@@ -77,8 +77,9 @@ lags (1, 7, 30) y estadísticas móviles (media/desviación de 7 y 30 días), co
 | **MASE** | Error escalado contra el baseline naive; **< 1 significa que supera al naive** |
 | **WAPE** | Error absoluto ponderado agregado (visión de negocio/inventario) |
 
-- **Criterio de decisión**: ranking combinado de **MASE + WAPE**; desempate con sMAPE y
-  estabilidad entre las series del subconjunto (menor dispersión del error).
+- **Criterio de decisión**: ranking combinado de **MASE + WAPE**, descartando modelos con
+  **sesgo relativo** `|rel_bias_pct| > 5%` (sub/sobreestimación sistemática) y desempatando
+  por el menor sesgo absoluto.
 - Se reportan métricas **offline** (holdout oct–dic 2017) y **online** (backtest por
   ventanas deslizantes que simula producción).
 
@@ -86,7 +87,22 @@ lags (1, 7, 30) y estadísticas móviles (media/desviación de 7 y 30 días), co
 
 ## 2. Diagrama de flujo del proyecto (b)
 
-*Pendiente de completar (se documentará con diagrama Mermaid).*
+```mermaid
+flowchart TD
+    A[Kaggle: train.csv 2013-2017<br/>913k filas, 500 series] --> B[Subconjunto 150 series<br/>10 tiendas x 15 items]
+    B --> C[Fase 1: EDA + split temporal<br/>train <= 2017-09-30 | holdout oct-dic 2017]
+    C --> D[Fase 2: Feature engineering<br/>calendario + lags 1,7,30 + rolling 7,30]
+    D --> E[Fase 3: Modelos + MLflow<br/>baselines, GBM, ensembles, MLP + backtest walk-forward]
+    E --> F[Seleccion del modelo productivo<br/>regla MASE + WAPE, filtro de sesgo <= 5%]
+    F --> G[Fase 4: pyfunc + submission<br/>ene-mar 2018, evidencias en DagsHub]
+    F --> H[Fase 5: Agente de insights<br/>RAG-lite con Groq, experimentos en MLflow]
+    G --> I[Fase 6: Scripts CLI<br/>preprocess, train, predict]
+    H --> I
+    I --> J[Release v1.0.0]
+```
+
+**Evidencia de experimentos (MLflow en DagsHub)**:
+<https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments>
 
 ---
 
@@ -159,21 +175,119 @@ subconjunto.
 
 ## 4. Model Card (d)
 
-*Pendiente de completar.*
+### Resumen
+
+Modelo global de regresión **LightGBM** que pronostica la demanda diaria (unidades
+vendidas) de las **150 series del subconjunto** para un horizonte de **90 días**. El
+modelo vive en el Model Registry de MLflow con el alias **`Production`** y se consume
+como envoltura **pyfunc**.
+
+### Uso previsto
+
+- Pronóstico de demanda a 90 días por tienda-artículo para la planificación de inventario
+  (stock de seguridad, reposición y presupuesto por tienda).
+- Generación de la submission demostrativa ene-mar 2018 y de insights de negocio por
+  serie (agente genAI de la Fase 5).
+
+### Arquitectura y entrenamiento
+
+- **Algoritmo**: LightGBM (Gradient Boosting) — `n_estimators=300`, `learning_rate=0.05`,
+  `num_leaves=63`, `random_state=42`.
+- **Estrategia**: modelo **global** único entrenado sobre las features de las 150 series.
+- **Features (15)**: calendario (`year`, `month`, `day`, `dayofweek`, `weekofyear`,
+  `dayofyear`), `store`/`item` y lags (1, 7, 30) + medias/desviaciones móviles (7, 30 días).
+- **Datos de entrenamiento**: `train_features.csv` (255,600 filas, hasta 2017-09-30).
+- **Datos de evaluación**: `holdout_features.csv` (13,800 filas, oct–dic 2017).
+
+### Métricas de evaluación
+
+| Evaluación | MASE | WAPE | rel_bias |
+|---|---|---|---|
+| Offline (holdout oct–dic 2017) | **0.581** | **10.41%** | **-0.25%** |
+| Online (backtest walk-forward) | **0.604** | **10.18%** | **-0.11%** |
+
+`MASE < 1` → el modelo supera al baseline naive en ~40%. El sesgo relativo bajo indica
+que no subestima ni sobreestima de forma sistemática.
+
+### Criterio de selección
+
+Ranking combinado **MASE + WAPE** con filtro `|rel_bias_pct| <= 5%`; desempate por el
+menor sesgo absoluto. LightGBM ganó en la comparación offline (notebooks 03-04) y se
+confirmó en la online (notebook 05), por lo que se promovió a `Production`.
+
+### Limitaciones
+
+- Cubre solo el **subconjunto de 150 series** (el dataset original tiene 500), así que la
+  submission no es apta para el leaderboard de la competición.
+- Las features son **autoregresivas** (`lag_1`, rolling): el horizonte de 90 días requiere
+  **pronóstico recursivo** día a día, lo que acumula error cuanto más lejos del último dato
+  real.
+- El dataset no incluye feriados ni eventos especiales; el modelo no los modela.
 
 ---
 
 ## 5. Resultados con métricas offline y online (e)
 
-*Pendiente de completar (se llenará con los resultados de las Fases 3 y 4). Las métricas
-corresponden al subconjunto de 150 series: offline sobre el holdout oct–dic 2017 y
-online con backtesting walk-forward.*
+Todas las métricas corresponden al **subconjunto de 150 series**.
+
+- **Offline**: entrenamiento con datos hasta 2017-09-30 y evaluación sobre el holdout
+  **oct–dic 2017** (3 meses, 13,800 filas). Ver notebooks 03 y 04.
+- **Online**: backtesting **walk-forward** sobre el historial con 4 ventanas de ~90 días
+  (dic-2016 .. sep-2017), re-entrenando el modelo en cada fold para simular producción.
+  Ver notebook 05.
+
+### 5.1 Offline (holdout oct–dic 2017)
+
+| Modelo | MASE | WAPE | rel_bias |
+|---|---|---|---|
+| naive | 1.038 | 19.23% | +0.31% |
+| seasonal_naive | 0.884 | 16.01% | +2.44% |
+| media por serie | 0.918 | 17.33% | **+5.32%** *(descartado, sesgo > 5%)* |
+| **lightgbm** | **0.581** | **10.41%** | **-0.25%** ✓ *Production* |
+| xgboost | 0.581 | 10.44% | -0.18% |
+| catboost | 0.586 | 10.53% | -0.39% |
+| random_forest | 0.611 | 11.03% | -0.07% |
+| extra_trees | 0.601 | 10.83% | -0.21% |
+| mlp | 0.604 | 10.94% | +0.66% |
+
+### 5.2 Online (backtest walk-forward)
+
+| Modelo | MASE online | WAPE online | rel_bias online |
+|---|---|---|---|
+| **lightgbm** | **0.604** | **10.18%** | **-0.11%** |
+| xgboost | 0.605 | 10.20% | -0.13% |
+| seasonal_naive | 0.866 | 14.71% | -0.03% |
+| media por serie | 0.885 | 15.64% | +0.05% |
+| naive | 1.091 | 18.94% | +0.12% |
+
+**LightGBM gana en ambas evaluaciones**; XGBoost empata casi exacto en MASE pero pierde
+por WAPE (ranking combinado). El orden de los modelos se mantiene entre offline y online,
+lo que confirma que la selección no depende de un solo split.
+
+### 5.3 Componente genAI (Fase 5)
+
+El agente RAG-lite (contexto + retrieval TF-IDF + LLM Groq) genera un insight de negocio
+por serie. Cada insight se registra en el experimento `demand_forecast_insights` con
+métricas coherentes del componente: **latencia** total/retrieval/generación, **tokens**
+usados y **cobertura de la serie** (si el texto menciona tienda y artículo). Con
+`GROQ_API_KEY` configurada los insights los genera `llama-3.3-70b-versatile`.
 
 ---
 
 ## 6. Conclusiones (f)
 
-*Pendiente de completar.*
+- El enfoque **supervisado global** (LightGBM) supera a todos los baselines: MASE **0.581**
+  offline y **0.604** online, es decir, un error ~40% menor que el naive (< 1).
+- El orden de los modelos se mantiene entre la evaluación **offline** y la **online**, lo
+  que indica que la selección no depende de un solo split temporal.
+- Incorporar el **sesgo** al criterio de decisión evitó elegir modelos que sub/sobreestiman
+  sistemáticamente: la media por serie quedó descartada por `|rel_bias| > 5%`.
+- El modelo productivo se consume como **pyfunc** (`models:/demand_forecast@Production`) y
+  genera la submission de 90 días con **pronóstico recursivo** (media 52.5 u/día, escala
+  coherente con el histórico de 56.2 u/día).
+- **MLflow + DagsHub** dan evidencia pública de experimentos, artefactos y modelo
+  productivo; el **agente genAI** (RAG-lite con Groq) explica los pronósticos en lenguaje
+  natural, cubriendo la parte genAI del entregable.
 
 ---
 
@@ -182,18 +296,27 @@ online con backtesting walk-forward.*
 - Fase 0 (setup del repositorio + MLflow demo): completada.
 - Fase 1 (datos y EDA): completada — `notebooks/01_preprocesamiento_eda.ipynb`, datos en `data/`.
 - Fase 2 (feature engineering): completada — `src/features/build_features.py`, `notebooks/02_feature_engineering.ipynb`.
+- Fase 3 (modelos + MLflow + backtest): completada — notebooks 03-05; experimentos y Model
+  Registry en MLflow; LightGBM en `Production`.
+- Fase 4 (pyfunc + submission + DagsHub): completada — `notebooks/06_mlflow_dagshub_pyfunc.ipynb`,
+  submission en `reports/submissions/submission_production.csv`, evidencias en DagsHub.
+- Fase 5 (agente genAI de insights): completada — `src/agent/insights_agent.py`,
+  `notebooks/07_agente_insights.ipynb`.
+- Fase 6 (scripts CLI): completada — `scripts/preprocess.py`, `scripts/train.py`,
+  `scripts/predict.py`.
 
 ## Estructura del repositorio
 
 ```
 ├── data/            # datos crudos (raw) y procesados
 ├── docs/            # documentación (estrategia git, etc.)
-├── notebooks/       # notebooks del proyecto (EDA y ML)
+├── models/          # modelo de producción exportado (pyfunc) para el entregable
+├── notebooks/       # notebooks del proyecto (EDA, ML y agente genAI)
 ├── scripts/         # preprocesamiento, entrenamiento y predicción
 ├── src/             # módulo de código reusable
+│   ├── agent/       # agente genAI de insights (RAG-lite con Groq)
 │   ├── data/        # carga y preprocesamiento
 │   ├── features/    # construcción de features (lags, calendario)
-│   ├── models/      # entrenamiento, predicción y evaluación
-│   └── agent/       # agente genAI de insights (Groq)
+│   └── models/      # entrenamiento, predicción y evaluación
 └── PROYECTO.md      # contexto completo del proyecto
 ```

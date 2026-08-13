@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-13** (sesión 5: Fase 5 completa — agente de insights RAG-lite con Groq, notebook 07, modelo exportado a `models/demand_forecast/`)
+Última actualización: **2026-08-13** (sesión 6: Fase 6-7 completadas — `scripts/predict.py`, README completo con secciones b/d/e/f, revisión de evidencia en DagsHub)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -13,6 +13,25 @@
 | #3 | Fase 2: feature engineering |
 | #4 | Separar material original de clase del repo |
 | #5 | README secciones a (problema de ML) y c (dataset/diccionario) |
+
+### Sesión 6 (sin PR todavía, cambios en rama `development`)
+- **Fase 6 — `scripts/predict.py`** (CLI): carga el modelo productivo desde
+  `models/demand_forecast` (o `models:/demand_forecast@Production`), arma el marco
+  historial+test del subconjunto, pronostica ene-mar 2018 **día a día** (recursivo,
+  mismo enfoque del notebook 06) y guarda la submission. Probado: smoke test 3 series
+  y corrida completa → 13,500 filas, media 52.5 u/día (idéntico al notebook 06).
+  Flags: `--model-uri`, `--output`, `--max-series`.
+- **Fase 7 — README completo**: secciones **b** (diagrama Mermaid + link DagsHub),
+  **d** (Model Card: LightGBM, métricas offline/online, limitaciones), **e**
+  (resultados offline 9 modelos + online 5 modelos + componente genAI) y **f**
+  (conclusiones). Corregido el criterio de decisión en 1.4 (ranking MASE + WAPE,
+  filtro |rel_bias|<=5%, desempate por sesgo). `docs/git_strategy.md` ya estaba listo.
+- **OJO evidencia DagsHub**: al consultar el remoto en esta sesión,
+  `mlflow.search_experiments()` en DagsHub devuelve **0 experimentos** (vacío), pese a
+  que la sesión 4 registró el run `fase4_remoto_production` y `demand_forecast` v2 →
+  Production. Puede que la cuenta/repo haya cambiado o el run no persistió. **Hay que
+  re-ejecutar la celda remota del notebook 06** (o subir los runs) antes de la entrega,
+  porque el entregable exige el link público de evidencia con artefactos y modelo.
 
 ### Sesión 5 (sin PR todavía, cambios en rama `development`)
 - **Fase 5 — agente genAI en `src/agent/insights_agent.py` + notebook `07_agente_insights.ipynb`**:
@@ -226,8 +245,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | 3. Modelos | Backtesting walk-forward, comparar familias; métricas offline y online. Runner con MLflow: `scripts/train.py` + `src/models/train_model.py` + `src/models/metrics.py` | **COMPLETADA** (offline en notebooks 03 y 04 → lightgbm v9; online en notebook 05 → lightgbm; pendiente opcional SARIMA/Prophet con el subconjunto) |
 | 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | **COMPLETADA** (notebook 06: pyfunc + submission ene-mar 2018; remoto en https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments → `demand_forecast` v2 Production) |
 | 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite: contexto + retrieval TF-IDF + LLM) y notebook 07; insights registrados en MLflow | **COMPLETADA** (sesión 5; `demand_forecast_insights` con métricas de latencia/tokens; falta solo `GROQ_API_KEY` para usar el LLM en lugar del heurístico) |
-| 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | Pendiente |
-| 7. Documentación | README completo (diagrama Mermaid, Model Card, métricas offline/online, conclusiones), `docs/git_strategy.md` | Pendiente |
+| 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | **COMPLETADA** (sesión 6: `predict.py` probado, 13,500 filas media 52.5 u/día) |
+| 7. Documentación | README completo (diagrama Mermaid, Model Card, métricas offline/online, conclusiones), `docs/git_strategy.md` | **COMPLETADA** (sesión 6; `docs/git_strategy.md` ya listo desde fase 0) |
 | 8. Release | PR final development→main, tag v1.0.0, notas de release | Pendiente |
 | Opcional | Reto ML1 (Docker), Reto ML2 (Azure) | Sin decidir |
 
@@ -337,21 +356,17 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 9. Pasos siguientes (próxima sesión)
 
-> **Estado al cierre de la sesión 5**: Fases 0-5 completadas. Notebooks 01-07 ejecutados.
-> Fase 5: agente de insights RAG-lite con Groq (`src/agent/insights_agent.py`) + notebook 07,
-> con `GROQ_API_KEY` configurada (insights generados con `llama-3.3-70b-versatile`).
-> El modelo de producción quedó exportado en `models/demand_forecast/` para commitear a GitHub.
+> **Estado al cierre de la sesión 6**: Fases 0-7 completadas. Falta la **Fase 8 (release)**.
+> Antes del release: **revisar la evidencia de DagsHub** (vacía al consultarla) y limpiar
+> PROYECTO.md (decisión del usuario: solo contexto interno).
 
-1. **Fase 6 — scripts**: crear `scripts/predict.py` (CLI: carga el modelo de
-   `models/demand_forecast/` o `models:/demand_forecast@Production`, arma el marco
-   historial+test, pronóstico recursivo ene-mar 2018 y guarda la submission).
-2. **Fase 7 — documentación**: completar README (secciones b diagrama Mermaid, d Model
-   Card, e métricas offline/online con resultados de notebooks 03-05, f conclusiones;
-   actualizar sección c con el subconjunto y mencionar el agente de insights) y
-   `docs/git_strategy.md`.
-3. **Fase 8 — release**: commitear `models/demand_forecast/`, PR final development→main,
-   tag v1.0.0 con notas de release (último commit 30/8). OJO: limpiar PROYECTO.md antes
-   de la entrega (decisión del usuario: este archivo es solo para contexto).
+1. **Evidencia DagsHub (crítico)**: re-ejecutar la celda remota del notebook 06 con el
+   `.env` actual (ya tiene DAGSHUB_TOKEN) para volver a subir el run `fase4_remoto_production`
+   y el modelo `demand_forecast` → Production. Verificar con `mlflow.search_experiments()`.
+2. **Fase 8 — release**: commit de `scripts/predict.py` + README + PROYECTO.md, PR final
+   development→main, tag v1.0.0 con notas de release (último commit 30/8). OJO: limpiar
+   PROYECTO.md antes de la entrega y confirmar que el README quedó bien en GitHub (render
+   de Mermaid y tablas).
 
 ---
 
