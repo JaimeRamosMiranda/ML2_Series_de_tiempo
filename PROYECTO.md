@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-13** (sesión 6: Fase 6-7 completadas — `scripts/predict.py`, README completo con secciones b/d/e/f, revisión de evidencia en DagsHub)
+Última actualización: **2026-08-13** (sesión 6: Fase 6-7 completadas — `scripts/predict.py`, README completo con secciones b/d/e/f, evidencia de DagsHub re-subida con `scripts/upload_dagshub_evidence.py`)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -26,12 +26,18 @@
   (resultados offline 9 modelos + online 5 modelos + componente genAI) y **f**
   (conclusiones). Corregido el criterio de decisión en 1.4 (ranking MASE + WAPE,
   filtro |rel_bias|<=5%, desempate por sesgo). `docs/git_strategy.md` ya estaba listo.
-- **OJO evidencia DagsHub**: al consultar el remoto en esta sesión,
-  `mlflow.search_experiments()` en DagsHub devuelve **0 experimentos** (vacío), pese a
-  que la sesión 4 registró el run `fase4_remoto_production` y `demand_forecast` v2 →
-  Production. Puede que la cuenta/repo haya cambiado o el run no persistió. **Hay que
-  re-ejecutar la celda remota del notebook 06** (o subir los runs) antes de la entrega,
-  porque el entregable exige el link público de evidencia con artefactos y modelo.
+- **Evidencia DagsHub re-subida (resuelto)**: el remoto aparecía vacío (0 experimentos);
+  el run `fase4_remoto_production` de la sesión 4 no persistió en DagsHub. En su lugar se
+  re-subió la evidencia local con `scripts/upload_dagshub_evidence.py` (sin re-ejecutar el
+  notebook 06): experimento `demand_forecast_fase3` (run `lightgbm_production` con
+  métricas MASE/WAPE/bias, artefactos `predictions.csv` + `forecast_plot.png` y el modelo),
+  experimento `demand_forecast_insights` (los 3 insights LLM con contexto, series
+  similares e insight como artefactos) y el modelo `demand_forecast` **v2 → alias
+  Production** (READY). Link: <https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments>
+  ⚠️ Detalle técnico: DagsHub no persiste el directorio `model` que crea
+  `mlflow.sklearn.log_model` (su sync es asíncrono), así que el script sube los archivos
+  del modelo exportado bajo `artifact_path="model"` y espera a que aparezcan antes de
+  registrar el modelo.
 
 ### Sesión 5 (sin PR todavía, cambios en rama `development`)
 - **Fase 5 — agente genAI en `src/agent/insights_agent.py` + notebook `07_agente_insights.ipynb`**:
@@ -357,16 +363,14 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 ## 9. Pasos siguientes (próxima sesión)
 
 > **Estado al cierre de la sesión 6**: Fases 0-7 completadas. Falta la **Fase 8 (release)**.
-> Antes del release: **revisar la evidencia de DagsHub** (vacía al consultarla) y limpiar
-> PROYECTO.md (decisión del usuario: solo contexto interno).
+> La evidencia de DagsHub quedó **re-subida** (`scripts/upload_dagshub_evidence.py`).
+> Pendiente: limpiar PROYECTO.md (decisión del usuario: solo contexto interno).
 
-1. **Evidencia DagsHub (crítico)**: re-ejecutar la celda remota del notebook 06 con el
-   `.env` actual (ya tiene DAGSHUB_TOKEN) para volver a subir el run `fase4_remoto_production`
-   y el modelo `demand_forecast` → Production. Verificar con `mlflow.search_experiments()`.
-2. **Fase 8 — release**: commit de `scripts/predict.py` + README + PROYECTO.md, PR final
+1. **Fase 8 — release**: commitear `scripts/upload_dagshub_evidence.py`, PR final
    development→main, tag v1.0.0 con notas de release (último commit 30/8). OJO: limpiar
    PROYECTO.md antes de la entrega y confirmar que el README quedó bien en GitHub (render
-   de Mermaid y tablas).
+   de Mermaid y tablas) y que el link de DagsHub muestra el run `lightgbm_production`
+   con su modelo y Production.
 
 ---
 
