@@ -1,16 +1,42 @@
 # Pronóstico de demanda multi-series
 
-Proyecto final — Curso II, Especialización en Machine Learning Engineering.
+> Proyecto final — Curso II, Especialización en Machine Learning Engineering.
 
 Pronóstico de demanda para **series de tiempo** (ventas diarias por tienda-artículo)
 usando **MLflow** como herramienta de administración de experimentos y modelos, y un
 **agente genAI de insights** (RAG-lite con Groq) que explica los pronósticos.
 
+![Python](https://img.shields.io/badge/Python-3.14-blue)
+![MLflow](https://img.shields.io/badge/MLflow-3.15-orange)
+![LightGBM](https://img.shields.io/badge/LightGBM-4.7-green)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-1.9-yellow)
+[![DagsHub](https://img.shields.io/badge/DagsHub-MLflow%20experiments-blueviolet)](https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments)
+
+### Resultados clave
+
+| Métrica | Offline (holdout oct–dic 2017) | Online (walk-forward) |
+|---|---|---|
+| **MASE** | **0.581** | **0.604** |
+| **WAPE** | **10.41%** | **10.18%** |
+| **rel_bias** | **-0.25%** | **-0.11%** |
+| Modelo | LightGBM `demand_forecast@Production` | LightGBM |
+
 > El dataset original tiene **500 series** (10 tiendas × 50 artículos); por el límite de
 > ~100 MB del curso, este proyecto trabaja con un **subconjunto de 150 series**
 > (10 tiendas × 15 artículos). Ver sección 3.
 
-> Documento de contexto general del proyecto: [`PROYECTO.md`](PROYECTO.md).
+---
+
+## Índice
+
+1. [Problema de Machine Learning (a)](#1-problema-de-machine-learning-a)
+2. [Diagrama de flujo del proyecto (b)](#2-diagrama-de-flujo-del-proyecto-b)
+3. [Descripción del dataset y diccionario de datos (c)](#3-descripción-del-dataset-y-diccionario-de-datos-c)
+4. [Model Card (d)](#4-model-card-d)
+5. [Resultados con métricas offline y online (e)](#5-resultados-con-métricas-offline-y-online-e)
+6. [Conclusiones (f)](#6-conclusiones-f)
+7. [Estado del proyecto](#estado-del-proyecto)
+8. [Estructura del repositorio](#estructura-del-repositorio)
 
 ---
 
@@ -87,19 +113,7 @@ lags (1, 7, 30) y estadísticas móviles (media/desviación de 7 y 30 días), co
 
 ## 2. Diagrama de flujo del proyecto (b)
 
-```mermaid
-flowchart TD
-    A[Kaggle: train.csv 2013-2017<br/>913k filas, 500 series] --> B[Subconjunto 150 series<br/>10 tiendas x 15 items]
-    B --> C[Fase 1: EDA + split temporal<br/>train <= 2017-09-30 | holdout oct-dic 2017]
-    C --> D[Fase 2: Feature engineering<br/>calendario + lags 1,7,30 + rolling 7,30]
-    D --> E[Fase 3: Modelos + MLflow<br/>baselines, GBM, ensembles, MLP + backtest walk-forward]
-    E --> F[Seleccion del modelo productivo<br/>regla MASE + WAPE, filtro de sesgo <= 5%]
-    F --> G[Fase 4: pyfunc + submission<br/>ene-mar 2018, evidencias en DagsHub]
-    F --> H[Fase 5: Agente de insights<br/>RAG-lite con Groq, experimentos en MLflow]
-    G --> I[Fase 6: Scripts CLI<br/>preprocess, train, predict]
-    H --> I
-    I --> J[Release v1.0.0]
-```
+![Flujo del proyecto](docs/imagenes/diagrama_flujo.png)
 
 **Evidencia de experimentos (MLflow en DagsHub)**:
 <https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments>
@@ -304,19 +318,22 @@ usados y **cobertura de la serie** (si el texto menciona tienda y artículo). Co
   `notebooks/07_agente_insights.ipynb`.
 - Fase 6 (scripts CLI): completada — `scripts/preprocess.py`, `scripts/train.py`,
   `scripts/predict.py`.
+- Fase 7 (documentación): completada — este README, `docs/git_strategy.md` y el diagrama
+  de flujo en `docs/imagenes/`.
+- Fase 8 (release): completada — PR development→main y tag `v1.0.0`.
 
 ## Estructura del repositorio
 
 ```
 ├── data/            # datos crudos (raw) y procesados
-├── docs/            # documentación (estrategia git, etc.)
+├── docs/            # documentación (estrategia git) y diagrama de flujo
 ├── models/          # modelo de producción exportado (pyfunc) para el entregable
 ├── notebooks/       # notebooks del proyecto (EDA, ML y agente genAI)
-├── scripts/         # preprocesamiento, entrenamiento y predicción
+├── scripts/         # preprocesamiento, entrenamiento, predicción y evidencia DagsHub
 ├── src/             # módulo de código reusable
 │   ├── agent/       # agente genAI de insights (RAG-lite con Groq)
 │   ├── data/        # carga y preprocesamiento
 │   ├── features/    # construcción de features (lags, calendario)
 │   └── models/      # entrenamiento, predicción y evaluación
-└── PROYECTO.md      # contexto completo del proyecto
+└── reports/         # submissions y salidas generadas
 ```
