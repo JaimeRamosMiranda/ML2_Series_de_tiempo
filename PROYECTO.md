@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-13** (sesión 6: Fase 6-7 completadas — `scripts/predict.py`, README completo con secciones b/d/e/f, evidencia de DagsHub re-subida con `scripts/upload_dagshub_evidence.py`)
+Última actualización: **2026-08-13** (sesión 7: **Fases 0-8 completadas** — release v1.0.0: PR #8 development→main, tag `v1.0.0` + GitHub Release; README final sin mención a PROYECTO.md, con imagen del flujo en `docs/imagenes/diagrama_flujo.png`)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -253,7 +253,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite: contexto + retrieval TF-IDF + LLM) y notebook 07; insights registrados en MLflow | **COMPLETADA** (sesión 5; `demand_forecast_insights` con métricas de latencia/tokens; falta solo `GROQ_API_KEY` para usar el LLM en lugar del heurístico) |
 | 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | **COMPLETADA** (sesión 6: `predict.py` probado, 13,500 filas media 52.5 u/día) |
 | 7. Documentación | README completo (diagrama Mermaid, Model Card, métricas offline/online, conclusiones), `docs/git_strategy.md` | **COMPLETADA** (sesión 6; `docs/git_strategy.md` ya listo desde fase 0) |
-| 8. Release | PR final development→main, tag v1.0.0, notas de release | Pendiente |
+| 8. Release | PR final development→main, tag v1.0.0, notas de release | **COMPLETADA** (sesión 7: PR #8 fusionado, tag `v1.0.0`, GitHub Release creada) |
 | Opcional | Reto ML1 (Docker), Reto ML2 (Azure) | Sin decidir |
 
 ### Cronograma sugerido
@@ -362,15 +362,20 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 9. Pasos siguientes (próxima sesión)
 
-> **Estado al cierre de la sesión 6**: Fases 0-7 completadas. Falta la **Fase 8 (release)**.
-> La evidencia de DagsHub quedó **re-subida** (`scripts/upload_dagshub_evidence.py`).
-> Pendiente: limpiar PROYECTO.md (decisión del usuario: solo contexto interno).
+> **Estado al cierre de la sesión 7**: **Fases 0-8 completadas** → **release v1.0.0**
+> publicado (PR #8 development→main, tag `v1.0.0` + GitHub Release con notas).
+> README sin mención a PROYECTO.md (requisito), con badges, índice, resultados clave,
+> imagen del flujo (`docs/imagenes/diagrama_flujo.png`) y Model Card.
+> Pendiente: limpiar PROYECTO.md antes de la entrega (decisión del usuario: solo contexto
+> interno; el README no lo referencia).
 
-1. **Fase 8 — release**: commitear `scripts/upload_dagshub_evidence.py`, PR final
-   development→main, tag v1.0.0 con notas de release (último commit 30/8). OJO: limpiar
-   PROYECTO.md antes de la entrega y confirmar que el README quedó bien en GitHub (render
-   de Mermaid y tablas) y que el link de DagsHub muestra el run `lightgbm_production`
-   con su modelo y Production.
+1. **Entrega**: revisar el render del README en GitHub (imagen del flujo, tablas, índice),
+   el link de DagsHub (run `lightgbm_production` con modelo y `Production`) y la release
+   <https://github.com/JaimeRamosMiranda/ML2_Series_de_tiempo/releases/tag/v1.0.0>.
+   Limpiar/eliminar PROYECTO.md y `.env.example` si aplica.
+2. **Requisitos del README verificados**: a (problema ML), b (diagrama de flujo con
+   imagen), c (dataset y diccionario), d (Model Card), e (métricas offline/online),
+   f (conclusiones) + estructura del repositorio y estado del proyecto.
 
 ---
 
