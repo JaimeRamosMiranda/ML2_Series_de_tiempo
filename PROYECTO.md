@@ -3,7 +3,7 @@
 > Archivo de contexto del proyecto. Su propósito es permitir continuar el trabajo
 > desde otra computadora/sesión sin perder el contexto de lo conversado.
 
-Última actualización: **2026-08-12** (sesión 4: Fase 4 completa — notebook 06 con pyfunc, submission ene-mar 2018 y remoto DagsHub con run + modelo `demand_forecast` v2 Production)
+Última actualización: **2026-08-13** (sesión 5: Fase 5 completa — agente de insights RAG-lite con Groq, notebook 07, modelo exportado a `models/demand_forecast/`)
 
 ### Registro de PRs (todas cerradas exitosamente)
 | PR | Contenido |
@@ -13,6 +13,34 @@
 | #3 | Fase 2: feature engineering |
 | #4 | Separar material original de clase del repo |
 | #5 | README secciones a (problema de ML) y c (dataset/diccionario) |
+
+### Sesión 5 (sin PR todavía, cambios en rama `development`)
+- **Fase 5 — agente genAI en `src/agent/insights_agent.py` + notebook `07_agente_insights.ipynb`**:
+  - RAG-lite en 3 pasos: (1) **contexto** = estadísticas del histórico + pronóstico
+    ene-mar 2018 de la serie; (2) **retrieval** = corpus de 150 fichas de serie con
+    TF-IDF + similitud de coseno (excluye la propia serie; se valida la
+    auto-coincidencia con similitud 1.0); (3) **generación** = LLM de Groq
+    `llama-3.3-70b-versatile` (API compatible con OpenAI) o generador heurístico
+    (baseline determinista) si no hay `GROQ_API_KEY`.
+  - El notebook analiza 3 series (tienda 3/art. 7, tienda 1/art. 1, tienda 10/art. 49)
+    y registra cada insight en el experimento `demand_forecast_insights` con métricas
+    coherentes del componente genAI: latencia total/retrieval/generación, tokens y
+    `references_series` (si el texto menciona tienda y artículo). Artefactos:
+    `contexto.json`, `series_similares.txt` e `insight.txt`.
+  - **Ejecutado 15 celdas OK con `GROQ_API_KEY` configurada** → los insights los genera
+    `llama-3.3-70b-versatile` (3 series, ~820 tokens cada uno, `references_series=1`).
+    El generador heurístico queda como baseline de comparación si no hay clave.
+  - **Modelo en el repo**: se exportó el modelo de producción (LightGBM, `model.skops`
+    ~1.7 MB) a `models/demand_forecast/` (carpeta NUEVA, NO gitignoreada) con
+    `mlflow.sklearn.save_model` y `skops_trusted_types`; carga con
+    `mlflow.pyfunc.load_model("models/demand_forecast")`. Decisión del usuario: el
+    entregable debe incluir el modelo en GitHub, no solo en DagsHub.
+- **OJO 2 carpetas `mlruns/`** (aclarado en sesión 5): `mlruns/` (raíz) es el store
+  oficial (SQLite `mlruns/mlflow.db` + artefactos de runs hechos desde la raíz);
+  `notebooks/mlruns/` guarda los artefactos de los runs de la Fase 3 (03-05) creados
+  con cwd=notebooks/ (la metadata está en el SQLite de la raíz). El `mlflow.db` de la
+  raíz es de la demo de Fase 0 (experimento "MLflow Demo"), sin uso. `mlruns1.rar` y
+  `notebooks/mlruns2.rar` son backups comprimidos sin trackear. Todo gitignoreado.
 
 ### Sesión 4 (sin PR todavía, cambios en rama `development`)
 - **Fase 4 — parte local en `notebooks/06_mlflow_dagshub_pyfunc.ipynb`** (14 celdas OK):
@@ -197,7 +225,7 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 | 2b. Subconjunto | `scripts/preprocess.py`: filtrar a 150 series y reconstruir features sobre la serie completa (holdout 90 días completos) | **COMPLETADA** (sesión 2) |
 | 3. Modelos | Backtesting walk-forward, comparar familias; métricas offline y online. Runner con MLflow: `scripts/train.py` + `src/models/train_model.py` + `src/models/metrics.py` | **COMPLETADA** (offline en notebooks 03 y 04 → lightgbm v9; online en notebook 05 → lightgbm; pendiente opcional SARIMA/Prophet con el subconjunto) |
 | 4. MLflow | Experimentos (params + metrics + artifacts), DagsHub remoto, registro de modelo productivo `pyfunc` con alias Production | **COMPLETADA** (notebook 06: pyfunc + submission ene-mar 2018; remoto en https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments → `demand_forecast` v2 Production) |
-| 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite) | Pendiente |
+| 5. Agente genAI | `src/agent/insights_agent.py` con Groq (RAG-lite: contexto + retrieval TF-IDF + LLM) y notebook 07; insights registrados en MLflow | **COMPLETADA** (sesión 5; `demand_forecast_insights` con métricas de latencia/tokens; falta solo `GROQ_API_KEY` para usar el LLM en lugar del heurístico) |
 | 6. Scripts | `scripts/preprocess.py`, `scripts/train.py`, `scripts/predict.py` ejecutables por CLI | Pendiente |
 | 7. Documentación | README completo (diagrama Mermaid, Model Card, métricas offline/online, conclusiones), `docs/git_strategy.md` | Pendiente |
 | 8. Release | PR final development→main, tag v1.0.0, notas de release | Pendiente |
@@ -260,7 +288,8 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 - [x] Descargar el dataset a `data/raw/` (train.csv, test.csv, sample_submission.csv). Kaggle 2.2.4 usa `kaggle competitions download -f <archivo>`; el ejecutable está en `$env:APPDATA\Python\Python314\Scripts\kaggle.exe` (no está en PATH).
 - [x] README: secciones a (problema de ML) y c (dataset + diccionario) redactadas en detalle (PR #5). Pendientes: b, d, e, f.
 - [x] Mover material original de clase fuera del repo (a `MLE2_Clase_Originales/`).
-- [ ] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env`.
+- [x] Obtener `GROQ_API_KEY` (tier gratuito) y guardarla en `.env` (sesión 5: la clave ya
+      está configurada; el notebook 07 genera los insights con `llama-3.3-70b-versatile`).
 - [ ] Definir si se hacen los retos opcionales (Docker/Azure).
 - [x] **Sesión 2**: reducir la base a 150 series (<100 MB) con `scripts/preprocess.py`.
 - [x] **Sesión 2**: incorporar **bias / rel_bias_pct** como criterio de selección de modelo.
@@ -274,6 +303,10 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
       `dagshub.init(repo, owner, mlflow=True)` se subió el run y se registró
       `demand_forecast` **v2 → alias `Production`**. Evidencia:
       https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments
+- [x] **Sesión 5**: Fase 5 **COMPLETADA** — agente de insights RAG-lite con Groq
+      (`src/agent/insights_agent.py`, notebook 07, experimento `demand_forecast_insights`).
+      Modelo de producción exportado a `models/demand_forecast/` para commitear a GitHub
+      (decisión del usuario: el modelo debe subirse al repo, no solo a DagsHub).
 
 ---
 
@@ -304,25 +337,21 @@ Entregable: repositorio de GitHub **v1.0.0** (sin commits adicionales después d
 
 ## 9. Pasos siguientes (próxima sesión)
 
-> **Estado al cierre de la sesión 4**: Fases 0-4 completadas. Notebooks 01-06 ejecutados
-> y commiteados. **Fase 4 completa**: parte local (pyfunc + submission ene-mar 2018) y
-> **remoto DagsHub** (run + `demand_forecast` v2 → `Production`).
-> Evidencia: https://dagshub.com/jaimeramos124/ML2_Series_de_tiempo/experiments
+> **Estado al cierre de la sesión 5**: Fases 0-5 completadas. Notebooks 01-07 ejecutados.
+> Fase 5: agente de insights RAG-lite con Groq (`src/agent/insights_agent.py`) + notebook 07,
+> con `GROQ_API_KEY` configurada (insights generados con `llama-3.3-70b-versatile`).
+> El modelo de producción quedó exportado en `models/demand_forecast/` para commitear a GitHub.
 
-1. ~~**Fase 4 — remoto en DagsHub**~~ **HECHO** (sesión 4): cuenta `jaimeramos124`,
-   repo `ML2_Series_de_tiempo`, `DAGSHUB_TOKEN` en `.env` (gitignoreado). Nota: en
-   dagshub 0.7.x la firma es `dagshub.init(repo_name, repo_owner, mlflow=True)` — el
-   primer argumento es el **repo**, no el owner. Si se re-ejecuta el notebook 06 en
-   otra máquina (mlruns local vacío), re-entrena LightGBM, registra v2/v3 en DagsHub y
-   reasigna `Production` automáticamente.
-2. **Fase 5 — notebook `07_agente_insights.ipynb`**: agente genAI (RAG-lite) con Groq:
-   `GROQ_API_KEY` en `.env` (tier gratuito: https://console.groq.com), modelo
-   `llama-3.3-70b-versatile`; 3 pasos: contexto (stats + pronóstico), retrieval TF-IDF sobre
-   fichas de serie, generación de insights. `src/agent/insights_agent.py` (pendiente de crear).
-3. **Fase 6-8**: `scripts/predict.py` (CLI, submission con test.csv), actualizar README
-   (subconjunto 150 series, diagrama Mermaid, Model Card, métricas offline/online con los
-   resultados de los notebooks 03-05, conclusiones), `docs/git_strategy.md`, PR final
-   development→main y release v1.0.0 (último commit 30/8).
+1. **Fase 6 — scripts**: crear `scripts/predict.py` (CLI: carga el modelo de
+   `models/demand_forecast/` o `models:/demand_forecast@Production`, arma el marco
+   historial+test, pronóstico recursivo ene-mar 2018 y guarda la submission).
+2. **Fase 7 — documentación**: completar README (secciones b diagrama Mermaid, d Model
+   Card, e métricas offline/online con resultados de notebooks 03-05, f conclusiones;
+   actualizar sección c con el subconjunto y mencionar el agente de insights) y
+   `docs/git_strategy.md`.
+3. **Fase 8 — release**: commitear `models/demand_forecast/`, PR final development→main,
+   tag v1.0.0 con notas de release (último commit 30/8). OJO: limpiar PROYECTO.md antes
+   de la entrega (decisión del usuario: este archivo es solo para contexto).
 
 ---
 
